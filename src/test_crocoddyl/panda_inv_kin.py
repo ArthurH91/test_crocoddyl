@@ -124,7 +124,6 @@ x = solver.solve()
 # # Plotting the solution and the DDP convergence
 log = solver.getCallbacks()[0]
 
-
 vis.display(INITIAL_CONFIG)
 input()
 for xs in log.xs:
