@@ -29,6 +29,8 @@ import pinocchio as pin
 import example_robot_data as robex
 import hppfcl
 
+from utils import pairs_to_avoid, RED
+
 # This class is for unwrapping an URDF and converting it to a model. It is also possible to add objects in the model,
 # such as a ball at a specific position.
 
@@ -37,24 +39,25 @@ class RobotWrapper:
     def __init__(
         self,
         scale=1.0,
-        name_robot="franka",
         urdf_model_path=None,
         mesh_dir=None,
+        srdf_model_path = None,
+        CAPSULE = False,
     ):
         """Initialize the wrapper with a scaling number of the target and the name of the robot wanted to get unwrapped.
 
-        Parameters
-        ----------
-        _scale : float, optional
-            Scale of the target, by default 1.0
-        name_robot : str, optional
-            Name of the robot wanted to get unwrapped, by default "franka"
+        Args:
+            scale (float, optional): Scale of the target, by default 1.0. Defaults to 1.0.
+            name_robot (str, optional): Name of the robot wanted to get unwrapped. Defaults to "franka".
+            urdf_model_path (_type_, optional): _description_. Defaults to None.
+            mesh_dir (_type_, optional): _description_. Defaults to None.
+            CAPSULE (bool, optional): Add capsules to the geom model. Defaults to False.
         """
 
         self._scale = scale
-        self._name_robot = name_robot
         self._urdf_model_path = urdf_model_path
         self._mesh_dir = mesh_dir
+        self._srdf_model_path = srdf_model_path
         self._color = np.array([249, 136, 126, 255]) / 255
 
     def __call__(self):
@@ -108,6 +111,51 @@ class RobotWrapper:
             geometric_models_reduced[1],
         )
 
+        # Modifying the collision model to add the capsules 
+        rdata = self._model_reduced.createData()
+        cdata = self._collision_model_reduced.createData()
+        q0 = pin.neutral(self._model_reduced)
+        
+        # Updating the models
+        pin.framesForwardKinematics(self._model_reduced, rdata, q0)
+        pin.updateGeometryPlacements(
+            self._model_reduced, rdata, self._collision_model_reduced, cdata, q0
+        )
+                
+        # Adding the capsules to the collision model
+        
+        collision_model_reduced_copy = self._collision_model_reduced.copy()
+        
+        for i, geometry_object in enumerate(collision_model_reduced_copy.geometryObjects):
+            if isinstance(geometry_object.geometry, hppfcl.Sphere):
+                self._collision_model_reduced.removeGeometryObject(geometry_object.name)
+            # Only selecting the cylinders
+            if isinstance(geometry_object.geometry, hppfcl.Cylinder):
+                capsule = pin.GeometryObject(
+                geometry_object.name[:-3] + "capsule" + str(i),
+                geometry_object.parentFrame,
+                geometry_object.parentJoint,
+                hppfcl.Capsule(geometry_object.geometry.radius, geometry_object.geometry.halfLength),
+                geometry_object.placement
+                )
+                capsule.meshColor = RED
+                self._collision_model_reduced.addGeometryObject(capsule)
+                
+
+        for geometry_object in self._collision_model_reduced.geometryObjects:
+            if isinstance(geometry_object.geometry, hppfcl.Cylinder):
+                self._collision_model_reduced.removeGeometryObject(geometry_object.name)
+        
+        # For some reasons, the following cylinders aren't removed with the loop from before.                 
+        self._collision_model_reduced.removeGeometryObject("panda2_link0_sc_0")
+        self._collision_model_reduced.removeGeometryObject('panda2_link7_sc_3')
+        self._collision_model_reduced.removeGeometryObject('panda2_link5_sc_0')
+        self._collision_model_reduced.removeGeometryObject('panda2_link4_sc_0')
+        self._collision_model_reduced.removeGeometryObject('panda2_link2_sc_0')             
+                
+        self._collision_model_reduced.addAllCollisionPairs()
+        pin.removeCollisionPairs(self._model_reduced, self._collision_model_reduced, self._srdf_model_path)
+        
         return (
             self._model_reduced,
             self._collision_model_reduced,
@@ -126,12 +174,13 @@ if __name__ == "__main__":
     mesh_dir = pinocchio_model_dir
     urdf_filename = "franka2.urdf"
     urdf_model_path = join(join(model_path, "panda"), urdf_filename)
+    srdf_model_path = model_path + "/panda/demo.srdf"
 
     # Creating the robot
     robot_wrapper = RobotWrapper(
-        name_robot="franka",
         urdf_model_path=urdf_model_path,
         mesh_dir=mesh_dir,
+        srdf_model_path=srdf_model_path
     )
     rmodel, cmodel, vmodel = robot_wrapper()
     rdata = rmodel.createData()
@@ -140,3 +189,8 @@ if __name__ == "__main__":
     MeshcatVis = MeshcatWrapper()
     vis = MeshcatVis.visualize(robot_model=rmodel, robot_visual_model=vmodel, robot_collision_model=cmodel)
     vis[0].display(pin.neutral(rmodel))
+    pin.computeCollisions(rmodel, rdata, cmodel, cdata, pin.neutral(rmodel), False)
+    for k in range(len(cmodel.collisionPairs)): 
+        cr = cdata.collisionResults[k]
+        cp = cmodel.collisionPairs[k]
+        print("collision pair:",cp.first,",",cp.second,"- collision:","Yes" if cr.isCollision() else "No")

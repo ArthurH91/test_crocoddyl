@@ -26,6 +26,30 @@ YELLOW_FULL = np.array([1, 1, 0, 1.])
 BLACK = np.array([0, 0, 0, 0.5])
 BLACK_FULL = np.array([0, 0, 0, 1.])
 
+
+pairs_to_avoid = (
+    ("panda2_link0_sc", "panda2_link1_sc"),
+    ("panda2_link0_sc", "panda2_link2_sc"),
+    ("panda2_link1_sc","panda2_link2_sc"),
+    ("panda2_link1_sc","panda2_link3_sc"),
+    ("panda2_link2_sc","panda2_link3_sc"), 
+    ("panda2_link3_sc","panda2_link4_sc"),
+    ("panda2_link3_sc","panda2_link5_sc"),
+    ("panda2_link4_sc","panda2_link5_sc"),
+    ("panda2_link5_sc","panda2_link6_sc"),
+    ("panda2_link5_sc","panda2_link7_sc"),
+    ("panda2_link6_sc","panda2_link7_sc"),
+    ("panda2_link6_sc","panda2_hand_sc"),
+    ("panda2_link7_sc","panda2_hand_sc"),
+    ("panda2_link6_sc","panda2_leftfinger"),
+    ("panda2_link7_sc","panda2_leftfinger"),
+    ("panda2_hand_sc","panda2_leftfinger"),
+    ("panda2_link6_sc","panda2_rightfinger"), 
+    ("panda2_link7_sc","panda2_rightfinger"),
+    ("panda2_hand_sc","panda2_rightfinger"), 
+    ("panda2_leftfinger","panda2_rightfinger"),
+)
+
 def get_transform(T_: hppfcl.Transform3f):
     T = np.eye(4)
     if isinstance(T_, hppfcl.Transform3f):
@@ -380,7 +404,7 @@ try :
 
         return req, req_diff
 except:
-    print("tqt")
+    pass
 
 
 def check_limits(rmodel : pin.Model,rdata : pin.Data,  Q : np.ndarray, CHECK_POS = True, CHECK_SPEED = True, CHECK_ACCEL = True):

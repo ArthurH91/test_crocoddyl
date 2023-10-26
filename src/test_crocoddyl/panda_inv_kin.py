@@ -17,12 +17,13 @@ model_path = join(pinocchio_model_dir, "franka_description/robots")
 mesh_dir = pinocchio_model_dir
 urdf_filename = "franka2.urdf"
 urdf_model_path = join(join(model_path, "panda"), urdf_filename)
+srdf_model_path = model_path + "/panda/demo.srdf"
 
 # Creating the robot
 robot_wrapper = RobotWrapper(
-    name_robot="franka",
     urdf_model_path=urdf_model_path,
     mesh_dir=mesh_dir,
+    srdf_model_path=srdf_model_path
 )
 rmodel, cmodel, vmodel = robot_wrapper()
 rdata = rmodel.createData()
@@ -35,8 +36,7 @@ cdata = cmodel.createData()
 # developed inside crocoddyl; it describes inside DifferentialActionModelFullyActuated class.
 # Finally, we use an Euler sympletic integration scheme.
 
-
-TARGET = pin.SE3(np.eye(3), np.array([-0.1, 0, 1.6]))
+TARGET = pin.SE3(pin.utils.rotate('x',np.pi), np.array([-0.1, 0, 0.9]))
 INITIAL_CONFIG = pin.neutral(rmodel)
 
 # Generating the meshcat visualizer
@@ -49,6 +49,8 @@ vis = vis[0]
 # Displaying the initial configuration of the robot
 vis.display(INITIAL_CONFIG)
 
+q0 = INITIAL_CONFIG
+x0 = np.concatenate([q0, pin.utils.zero(rmodel.nv)])
 
 # # Create a cost model per the running and terminal action model.
 
@@ -62,12 +64,12 @@ terminalCostModel = crocoddyl.CostModelSum(state)
 # # goal-tracking cost, state and control regularization; and one terminal-cost:
 # # goal cost. First, let's create the common cost functions.
 framePlacementResidual = crocoddyl.ResidualModelFramePlacement(
-    state, rmodel.getFrameId("panda2_hand"), TARGET
+    state, rmodel.getFrameId("panda2_leftfinger"), TARGET
 )
 
 
-uResidual = crocoddyl.ResidualModelControl(state)
-xResidual = crocoddyl.ResidualModelControl(state)
+uResidual = crocoddyl.ResidualModelControlGrav(state)
+xResidual = crocoddyl.ResidualModelState(state, x0)
 goalTrackingCost = crocoddyl.CostModelResidual(state, framePlacementResidual)
 xRegCost = crocoddyl.CostModelResidual(state, xResidual)
 uRegCost = crocoddyl.CostModelResidual(state, uResidual)
