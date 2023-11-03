@@ -42,13 +42,14 @@ robot_wrapper = RobotWrapper(
 )
 rmodel, cmodel, vmodel = robot_wrapper()
 rdata = rmodel.createData()
+cdata = cmodel.createData()
 
 ### ADDING THE OBSTACLE 
 OBSTACLE_RADIUS = 5e-2
-OBSTACLE = hppfcl.Box(OBSTACLE_RADIUS, OBSTACLE_RADIUS, OBSTACLE_RADIUS)
+OBSTACLE = hppfcl.Sphere(OBSTACLE_RADIUS)
 
 OBSTACLE_POSE = pin.SE3.Identity()
-OBSTACLE_POSE.translation = np.array([.2, 0., 1.])
+OBSTACLE_POSE.translation = np.array([.0, 0.1, 1.])
 
 OBSTACLE_GEOM_OBJECT = pin.GeometryObject(
     "obstacle",
@@ -60,12 +61,13 @@ OBSTACLE_GEOM_OBJECT = pin.GeometryObject(
 
 IG_OBSTACLE = cmodel.addGeometryObject(OBSTACLE_GEOM_OBJECT)
 
-for k in range(16,26):
-    cmodel.addCollisionPair(pin.CollisionPair(k, IG_OBSTACLE))
+for ig, geometry_object in enumerate(cmodel.geometryObjects):
+    if isinstance(geometry_object.geometry, hppfcl.Capsule):
+        cp = pin.CollisionPair(ig, IG_OBSTACLE)
+        cmodel.addCollisionPair(cp)
 
-cdata = cmodel.createData()
 
-print(cdata)
+
 ### CREATING THE TARGET 
 TARGET = pin.SE3(pin.utils.rotate('x',np.pi), np.array([-0.1, 0, 0.9]))
 INITIAL_CONFIG = pin.neutral(rmodel)

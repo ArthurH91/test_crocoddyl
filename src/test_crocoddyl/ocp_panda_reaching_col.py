@@ -9,7 +9,7 @@ class OCPPandaReachingCol():
     """This class is creating a optimal control problem of a panda robot reaching for a target while taking auto collisions into consideration
     """
     
-    def __init__(self, rmodel : pin.Model,cmodel : pin.GeometryModel,  TARGET_POSE : pin.SE3, T : int, dt : float,  x0 : np.ndarray, WEIGHT_xREG = 1e-1, WEIGHT_uREG = 1e-4, WEIGHT_COL = 1e-1, WEIGHT_GRIPPER_POSE =10) -> None:
+    def __init__(self, rmodel : pin.Model,cmodel : pin.GeometryModel,  TARGET_POSE : pin.SE3, T : int, dt : float,  x0 : np.ndarray, WEIGHT_xREG = 1e-1, WEIGHT_uREG = 1e-4, WEIGHT_COL = 1e3, WEIGHT_GRIPPER_POSE =10) -> None:
         """Creating the class for optimal control problem of a panda robot reaching for a target while taking auto collision into consideration
 
         Args:

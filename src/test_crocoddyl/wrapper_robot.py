@@ -125,6 +125,7 @@ class RobotWrapper:
         # Adding the capsules to the collision model
         
         collision_model_reduced_copy = self._collision_model_reduced.copy()
+
         
         for i, geometry_object in enumerate(collision_model_reduced_copy.geometryObjects):
             if isinstance(geometry_object.geometry, hppfcl.Sphere):
@@ -140,8 +141,9 @@ class RobotWrapper:
                 )
                 capsule.meshColor = RED
                 self._collision_model_reduced.addGeometryObject(capsule)
-                
 
+        
+        # Removing the geometry objects that aren't Capsule / Box
         for geometry_object in self._collision_model_reduced.geometryObjects:
             if isinstance(geometry_object.geometry, hppfcl.Cylinder):
                 self._collision_model_reduced.removeGeometryObject(geometry_object.name)
@@ -155,6 +157,7 @@ class RobotWrapper:
                 
         self._collision_model_reduced.addAllCollisionPairs()
         pin.removeCollisionPairs(self._model_reduced, self._collision_model_reduced, self._srdf_model_path)
+        
         
         return (
             self._model_reduced,
