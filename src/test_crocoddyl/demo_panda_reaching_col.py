@@ -45,10 +45,10 @@ rdata = rmodel.createData()
 
 ### ADDING THE OBSTACLE 
 OBSTACLE_RADIUS = 5e-2
-OBSTACLE = hppfcl.Box(OBSTACLE_RADIUS, OBSTACLE_RADIUS, OBSTACLE_RADIUS)
+OBSTACLE = hppfcl.Sphere(OBSTACLE_RADIUS)
 
 OBSTACLE_POSE = pin.SE3.Identity()
-OBSTACLE_POSE.translation = np.array([.2, 0., 1.])
+OBSTACLE_POSE.translation = np.array([.2, 0., 1.2])
 
 OBSTACLE_GEOM_OBJECT = pin.GeometryObject(
     "obstacle",
@@ -65,7 +65,6 @@ for k in range(16,26):
 
 cdata = cmodel.createData()
 
-print(cdata)
 ### CREATING THE TARGET 
 TARGET = pin.SE3(pin.utils.rotate('x',np.pi), np.array([-0.1, 0, 0.9]))
 INITIAL_CONFIG = pin.neutral(rmodel)
@@ -86,14 +85,14 @@ q0 = INITIAL_CONFIG
 x0 = np.concatenate([q0, pin.utils.zero(rmodel.nv)])
 
 ### CREATING THE PROBLEM
-problem = OCPPandaReachingCol(rmodel, cmodel, TARGET, T, dt, x0, WEIGHT_GRIPPER_POSE=100)
+problem = OCPPandaReachingCol(rmodel, cmodel, TARGET, T, dt, x0, WEIGHT_GRIPPER_POSE=100000, WEIGHT_COL=1e3)
 ddp = problem()
 # Solving the problem
 xx = ddp.solve()
 
 log = ddp.getCallbacks()[0]
 
-
+print("End of the computation, press enter to display the traj if requested.")
 ### DISPLAYING THE TRAJ
 if WITH_DISPLAY:
     vis.display(INITIAL_CONFIG)

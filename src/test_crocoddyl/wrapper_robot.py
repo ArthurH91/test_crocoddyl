@@ -126,14 +126,14 @@ class RobotWrapper:
         
         collision_model_reduced_copy = self._collision_model_reduced.copy()
 
-        
+        # Replacing the cylinders by capsules
         for i, geometry_object in enumerate(collision_model_reduced_copy.geometryObjects):
             if isinstance(geometry_object.geometry, hppfcl.Sphere):
                 self._collision_model_reduced.removeGeometryObject(geometry_object.name)
             # Only selecting the cylinders
             if isinstance(geometry_object.geometry, hppfcl.Cylinder):
                 capsule = pin.GeometryObject(
-                geometry_object.name[:-3] + "capsule" + str(i),
+                geometry_object.name[:-4] + "capsule" + str(i),
                 geometry_object.parentFrame,
                 geometry_object.parentJoint,
                 hppfcl.Capsule(geometry_object.geometry.radius, geometry_object.geometry.halfLength),
@@ -142,23 +142,34 @@ class RobotWrapper:
                 capsule.meshColor = RED
                 self._collision_model_reduced.addGeometryObject(capsule)
 
+
         
-        # Removing the geometry objects that aren't Capsule / Box
+        # Removing the geometry objects that aren't Capsule / Box and disabling the collisions for the finger and the camera
         for geometry_object in self._collision_model_reduced.geometryObjects:
+            # Disabling the collisions for the fingers
+            # weird utf-8 encoding shit
+            try:
+                if "finger" in geometry_object.name or "camera" in geometry_object.name or "support" in geometry_object.name:
+                    geometry_object.disableCollision = True
+            except:
+                pass
+            # Getting rid of the cylinders in cmodel            
             if isinstance(geometry_object.geometry, hppfcl.Cylinder):
                 self._collision_model_reduced.removeGeometryObject(geometry_object.name)
         
+    
         # For some reasons, the following cylinders aren't removed with the loop from before.                 
         self._collision_model_reduced.removeGeometryObject("panda2_link0_sc_0")
         self._collision_model_reduced.removeGeometryObject('panda2_link7_sc_3')
         self._collision_model_reduced.removeGeometryObject('panda2_link5_sc_0')
         self._collision_model_reduced.removeGeometryObject('panda2_link4_sc_0')
         self._collision_model_reduced.removeGeometryObject('panda2_link2_sc_0')             
-                
+        
         self._collision_model_reduced.addAllCollisionPairs()
+                
+        # self._collision_model_reduced.addAllCollisionPairs()
         pin.removeCollisionPairs(self._model_reduced, self._collision_model_reduced, self._srdf_model_path)
-        
-        
+                                                         
         return (
             self._model_reduced,
             self._collision_model_reduced,
