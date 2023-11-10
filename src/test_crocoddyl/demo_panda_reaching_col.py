@@ -1,5 +1,6 @@
 from os.path import dirname, join, abspath
 import argparse
+import time 
 
 import numpy as np
 import pinocchio as pin
@@ -12,9 +13,7 @@ from ocp_panda_reaching_col import OCPPandaReachingCol
 
 ###* PARSERS
 parser = argparse.ArgumentParser()
-parser.add_argument(
-    "-caps", "--capsule", help="transform the hppfcl spheres & cylinders into capsules for collision detection", action="store_true", default=True
-)
+
 parser.add_argument(
     "-d", "--display", help="display the results", action="store_true", default=False
 )
@@ -45,18 +44,29 @@ rdata = rmodel.createData()
 
 ### ADDING THE OBSTACLE 
 OBSTACLE_RADIUS = 5e-2
-OBSTACLE = hppfcl.Sphere(OBSTACLE_RADIUS)
-
+OBSTACLE_DIM = np.array([3e-1, 3e-1,3e-2])
+OBSTACLE = hppfcl.Box(OBSTACLE_DIM)
 OBSTACLE_POSE = pin.SE3.Identity()
-OBSTACLE_POSE.translation = np.array([.2, 0., 1.2])
+# OBSTACLE_POSE.translation = np.array([.2, -0.357, 1.2])
+OBSTACLE_POSE.translation = np.array([-0.32, 0, 1.2])
 
-OBSTACLE_GEOM_OBJECT = pin.GeometryObject(
-    "obstacle",
-    rmodel.getFrameId("universe"),
-    rmodel.frames[rmodel.getFrameId("universe")].parent,
-    OBSTACLE,
-    OBSTACLE_POSE
-)
+# parentJoint not implemented in pino2 but deprec. in pino3.
+if "2.6" in pin.__version__ :  
+    OBSTACLE_GEOM_OBJECT = pin.GeometryObject(
+        "obstacle",
+        rmodel.getFrameId("universe"),
+        rmodel.frames[rmodel.getFrameId("universe")].parent,
+        OBSTACLE,
+        OBSTACLE_POSE
+    )
+if "2.9" in pin.__version__:
+    OBSTACLE_GEOM_OBJECT = pin.GeometryObject(
+        "obstacle",
+        rmodel.getFrameId("universe"),
+        rmodel.frames[rmodel.getFrameId("universe")].parentJoint,
+        OBSTACLE,
+        OBSTACLE_POSE
+    )
 
 IG_OBSTACLE = cmodel.addGeometryObject(OBSTACLE_GEOM_OBJECT)
 
@@ -66,9 +76,9 @@ for k in range(16,26):
 cdata = cmodel.createData()
 
 ### CREATING THE TARGET 
-TARGET = pin.SE3(pin.utils.rotate('x',np.pi), np.array([-0.1, 0, 0.9]))
+TARGET = pin.SE3(pin.utils.rotate('x',np.pi),np.array([0, 0, 0.85]))
 INITIAL_CONFIG = pin.neutral(rmodel)
-
+INITIAL_CONFIG = np.array([0,0.5,0,-0.1,0,1,0])
 # Generating the meshcat visualizer
 if WITH_DISPLAY:
     MeshcatVis = MeshcatWrapper()
@@ -85,7 +95,7 @@ q0 = INITIAL_CONFIG
 x0 = np.concatenate([q0, pin.utils.zero(rmodel.nv)])
 
 ### CREATING THE PROBLEM
-problem = OCPPandaReachingCol(rmodel, cmodel, TARGET, T, dt, x0, WEIGHT_GRIPPER_POSE=100000, WEIGHT_COL=1e3)
+problem = OCPPandaReachingCol(rmodel, cmodel, TARGET, T, dt, x0, WEIGHT_GRIPPER_POSE=1000, WEIGHT_COL=1, WEIGHT_uREG=1e-4, WEIGHT_xREG=1e-1)
 ddp = problem()
 # Solving the problem
 xx = ddp.solve()
@@ -95,8 +105,10 @@ log = ddp.getCallbacks()[0]
 print("End of the computation, press enter to display the traj if requested.")
 ### DISPLAYING THE TRAJ
 if WITH_DISPLAY:
-    vis.display(INITIAL_CONFIG)
-    input()
-    for xs in log.xs:
-        vis.display(np.array(xs[:7].tolist()))
+    while True:
+        vis.display(INITIAL_CONFIG)
         input()
+        for xs in log.xs:
+            vis.display(np.array(xs[:7].tolist()))
+            time.sleep(1e-3)
+        print("press a key for replay")

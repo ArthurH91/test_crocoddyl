@@ -67,20 +67,28 @@ class OCPPandaReachingCol():
 )
         goalTrackingCost = crocoddyl.CostModelResidual(self._state, framePlacementResidual)
 
+#         framePlacementResidual = crocoddyl.ResidualModelFrameTranslation(
+#     self._state, self._rmodel.getFrameId("panda2_leftfinger"), self._TARGET_POSE.translation
+# )
+#         goalTrackingCost = crocoddyl.CostModelResidual(self._state, framePlacementResidual)
+
+
         # Collision costs
-        collision_radius = 0.2
+        collision_radius = 0.05
         activationCollision = crocoddyl.ActivationModel2NormBarrier(3, collision_radius)
         
-        # for k in range(len(self._cmodel.collisionPairs)):
-        #     residualCollision = crocoddyl.ResidualModelPairCollision(self._state, self._rmodel.nq, self._cmodel, k, 7)
-        #     costCollision = crocoddyl.CostModelResidual(self._state, activationCollision, residualCollision)
-        #     self._runningCostModel.addCost("collision" + str(k), costCollision, self._WEIGHT_COL)
-        #     self._terminalCostModel.addCost("collision" + str(k), costCollision, self._WEIGHT_COL)
+        for k in range(len(self._cmodel.collisionPairs)):
+            print(self._cmodel.geometryObjects[self._cmodel.collisionPairs[k].first].name,self._cmodel.geometryObjects[self._cmodel.collisionPairs[k].second].name)
+            residualCollision = crocoddyl.ResidualModelPairCollision(self._state, self._rmodel.nq, self._cmodel, k, 7)
+            costCollision = crocoddyl.CostModelResidual(self._state, activationCollision, residualCollision)
+            self._runningCostModel.addCost("collision" + str(k), costCollision, self._WEIGHT_COL)
+            self._terminalCostModel.addCost("collision_term"+ str(k), costCollision, self._WEIGHT_COL)
 
 
         # Adding costs to the models
         self._runningCostModel.addCost("stateReg", xRegCost, self._WEIGHT_xREG)
         self._runningCostModel.addCost("ctrlRegGrav", uRegCost,self._WEIGHT_uREG)
+        # self._runningCostModel.addCost("gripperPoseRM", goalTrackingCost, self._WEIGHT_GRIPPER_POSE)        
         self._terminalCostModel.addCost("stateReg", xRegCost, 1e-1)
         self._terminalCostModel.addCost("gripperPose", goalTrackingCost, self._WEIGHT_GRIPPER_POSE)
         
