@@ -18,6 +18,7 @@ class OCPPandaReachingCol:
         dt: float,
         x0: np.ndarray,
         WEIGHT_xREG=1e-1,
+        WEIGHT_uREG = 1e-4,
         WEIGHT_GRIPPER_POSE=10,
     ) -> None:
         """Creating the class for optimal control problem of a panda robot reaching for a target while taking auto collision into consideration
@@ -42,6 +43,7 @@ class OCPPandaReachingCol:
 
         # Weights
         self._WEIGHT_xREG = WEIGHT_xREG
+        self._WEIGHT_uREG = WEIGHT_uREG
         self._WEIGHT_GRIPPER_POSE = WEIGHT_GRIPPER_POSE
 
         # Data models
@@ -65,12 +67,17 @@ class OCPPandaReachingCol:
         xResidual = crocoddyl.ResidualModelState(self._state, self._x0)
         xRegCost = crocoddyl.CostModelResidual(self._state, xResidual)
 
+        # Control Regularization cost 
+        uResidual = crocoddyl.ResidualModelControl(self._state)
+        uRegCost = crocoddyl.CostModelResidual(self._state, uResidual)
+        
+
         # End effector frame cost
 
-        framePlacementResidual = crocoddyl.ResidualModelFrameTranslation(
+        framePlacementResidual = crocoddyl.ResidualModelFramePlacement(
             self._state,
             self._rmodel.getFrameId("panda2_leftfinger"),
-            self._TARGET_POSE.translation,
+            self._TARGET_POSE,
         )
         goalTrackingCost = crocoddyl.CostModelResidual(
             self._state, framePlacementResidual
@@ -78,6 +85,7 @@ class OCPPandaReachingCol:
 
         # Adding costs to the models
         self._runningCostModel.addCost("stateReg", xRegCost, self._WEIGHT_xREG)
+        self._runningCostModel.addCost("ctrlRegGrav", uRegCost,self._WEIGHT_uREG)
         self._runningCostModel.addCost(
             "gripperPoseRM", goalTrackingCost, self._WEIGHT_GRIPPER_POSE
         )
@@ -101,6 +109,10 @@ class OCPPandaReachingCol:
         self._terminalModel = crocoddyl.IntegratedActionModelEuler(
             self._terminal_DAM, 0.0
         )
+
+        self._runningModel.differential.armature = np.array([0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.])
+        self._terminalModel.differential.armature = np.array([0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.])
+
 
         problem = crocoddyl.ShootingProblem(
             self._x0, [self._runningModel] * self._T, self._terminalModel

@@ -1,7 +1,7 @@
 from os.path import dirname, join, abspath
 import argparse
 import time
-import json
+import json,codecs
 
 import numpy as np
 import pinocchio as pin
@@ -19,9 +19,9 @@ parser.add_argument(
     "-d", "--display", help="display the results", action="store_true", default=False
 )
 parser.add_argument(
-    "-maxit",
-    "--maxit",
-    help="number max of iterations of the solver",
+    "-step",
+    "--step",
+    help="number of steps in the trajectory",
     default=200,
     type=int,
 )
@@ -36,7 +36,7 @@ args = parser.parse_args()
 
 ###* OPTIONS
 WITH_DISPLAY = args.display
-T = args.maxit
+T = args.step
 WITH_SAVING = args.save
 
 dt = 1e-3
@@ -61,6 +61,7 @@ cdata = cmodel.createData()
 
 ### CREATING THE TARGET
 TARGET_POSE = pin.SE3(pin.utils.rotate("x", np.pi), np.array([0, 0, 1.55]))
+TARGET_POSE.translation = np.array([0, -0.4,1.5])
 
 ### INITIAL CONFIG OF THE ROBOT
 INITIAL_CONFIG = pin.neutral(rmodel)
@@ -82,14 +83,26 @@ if WITH_DISPLAY:
 q0 = INITIAL_CONFIG
 x0 = np.concatenate([q0, pin.utils.zero(rmodel.nv)])
 
+
+################################################################ WARM START ############################################################
+
+###* WARM START 
+
+results_json = codecs.open(
+   "results_test" + ".json", "r", encoding="utf-8"
+).read()
+# Loading the json file
+results = json.loads(results_json)
+Q_WS = results["Q"]
+
 ### CREATING THE PROBLEM
 problem = OCPPandaReachingCol(
     rmodel, cmodel, TARGET_POSE, T, dt, x0, WEIGHT_GRIPPER_POSE=100, WEIGHT_xREG=1e-1
 )
 ddp = problem()
 # Solving the problem
-
-xx = ddp.solve()
+xs_ws = [np.array(x) for x in Q_WS]
+ddp.solve(xs_ws)
 
 log = ddp.getCallbacks()[0]
 
