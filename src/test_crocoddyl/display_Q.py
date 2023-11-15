@@ -22,7 +22,16 @@ from utils import get_transform, linear_gradient, check_limits, get_transform_fr
 T = 10
 nq = 7
 
+name = "single_wall_without_autocollision_but_obstacle_constraints_non_neutral_start_only_translation_reaching"
+name = "single_wall_with_some_constraints_and_obstacle_non_neutral_start_only_translation_reaching" #! NO CONVERGENCE
+name = "single_wall_with_all_constraints_non_neutral_start_only_translation_reaching"
+name = "single_wall_without_any_constraints_non_neutral_start_only_translation_reaching"
+name = "single_wall_without_constraints_obstacle_non_neutral_start_only_translation_reaching" #! SAME RESULT (TOUCHES OBSTACLE)
 name = "single_wall_with_all_constraints"
+
+# name = "big_wall_in_front_robot_constraints_neutral_start_only_translation_reaching" 
+# name = "big_wall_with_some_constraints_and_obstacle_neutral_start_only_translation_reaching" #! SAME RESULT (GOES THROUGH THE OBSTACLE)
+
 
 
 ### LOADING THE ROBOT
