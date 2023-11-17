@@ -67,14 +67,14 @@ class OCPPandaReachingCol():
 )
         goalTrackingCost = crocoddyl.CostModelResidual(self._state, framePlacementResidual)
 
-#         framePlacementResidual = crocoddyl.ResidualModelFrameTranslation(
-#     self._state, self._rmodel.getFrameId("panda2_leftfinger"), self._TARGET_POSE.translation
-# )
-#         goalTrackingCost = crocoddyl.CostModelResidual(self._state, framePlacementResidual)
+        framePlacementResidual = crocoddyl.ResidualModelFrameTranslation(
+    self._state, self._rmodel.getFrameId("panda2_leftfinger"), self._TARGET_POSE.translation
+)
+        goalTrackingCost = crocoddyl.CostModelResidual(self._state, framePlacementResidual)
 
 
         # Collision costs
-        collision_radius = 0.05
+        collision_radius = 0.2
         activationCollision = crocoddyl.ActivationModel2NormBarrier(3, collision_radius)
         
         for k in range(len(self._cmodel.collisionPairs)):
@@ -87,8 +87,8 @@ class OCPPandaReachingCol():
 
         # Adding costs to the models
         self._runningCostModel.addCost("stateReg", xRegCost, self._WEIGHT_xREG)
-        self._runningCostModel.addCost("ctrlRegGrav", uRegCost,self._WEIGHT_uREG)
-        # self._runningCostModel.addCost("gripperPoseRM", goalTrackingCost, self._WEIGHT_GRIPPER_POSE)        
+        # self._runningCostModel.addCost("ctrlRegGrav", uRegCost,self._WEIGHT_uREG)
+        self._runningCostModel.addCost("gripperPoseRM", goalTrackingCost, self._WEIGHT_GRIPPER_POSE)        
         self._terminalCostModel.addCost("stateReg", xRegCost, 1e-1)
         self._terminalCostModel.addCost("gripperPose", goalTrackingCost, self._WEIGHT_GRIPPER_POSE)
         
@@ -102,8 +102,8 @@ class OCPPandaReachingCol():
         
         
         # Optionally add armature to take into account actuator's inertia
-        self._runningModel.differential.armature = np.array([0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.])
-        self._terminalModel.differential.armature = np.array([0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.])
+        # self._runningModel.differential.armature = np.array([0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.])
+        # self._terminalModel.differential.armature = np.array([0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.])
         
         problem = crocoddyl.ShootingProblem(self._x0, [self._runningModel] * self._T, self._terminalModel)
         # Create solver + callbacks

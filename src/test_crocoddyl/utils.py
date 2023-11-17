@@ -51,6 +51,17 @@ pairs_to_avoid = (
 )
 
 def get_transform(T_: hppfcl.Transform3f):
+    """Returns a np.ndarray instead of a pin.SE3 or a hppfcl.Transform3f
+
+    Args:
+        T_ (hppfcl.Transform3f): transformation to change into a np.ndarray. Can be a pin.SE3 as well
+
+    Raises:
+        NotADirectoryError: _description_
+
+    Returns:
+        _type_: _description_
+    """
     T = np.eye(4)
     if isinstance(T_, hppfcl.Transform3f):
         T[:3, :3] = T_.getRotation()
@@ -62,6 +73,15 @@ def get_transform(T_: hppfcl.Transform3f):
         raise NotADirectoryError
     return T
 
+def get_transform_from_list(T_ : list):
+    T = pin.SE3.Identity()
+    T.translation = np.array([T_[0][3],T_[1][3],T_[2][3]])
+    T_rot = np.eye(3)
+    T_rot[0][:] = T_[0][:3]
+    T_rot[1][:] = T_[1][:3]
+    T_rot[2][:] = T_[2][:3]
+    T.rotation = T_rot
+    return T
 
 def get_q_iter_from_Q(Q: np.ndarray, iter: int, nq: int):
     """Returns the iter-th configuration vector q_iter in the Q array.
