@@ -6,7 +6,7 @@ import pinocchio as pin
 import meshcat
 import meshcat.geometry as g
 import meshcat.transformations as tf
-from utils import get_transform, RED, YELLOW
+from utils import get_transform, RED, YELLOW, GREEN
 
 
 class MeshcatWrapper:
@@ -126,7 +126,7 @@ class MeshcatWrapper:
             self.viewer["/Axes"].set_property("visible", False)
         return self.viewer
 
-    def _renderSphere(self, e_name: str, dim: np.ndarray, pose : pin.SE3, color=RED):
+    def _renderSphere(self, e_name: str, dim: np.ndarray, pose : pin.SE3, color=GREEN):
         """Displaying a sphere in a meshcat server.
 
         Parameters
