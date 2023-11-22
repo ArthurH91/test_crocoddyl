@@ -2,9 +2,6 @@ from os.path import dirname, join, abspath
 import time
 import numpy as np
 import pinocchio as pin
-import crocoddyl
-import hppfcl
-import json
 
 from wrapper_robot import RobotWrapper
 from wrapper_meshcat import MeshcatWrapper
@@ -28,7 +25,7 @@ from scenario import chose_scenario
     OBSTACLE,
     OBSTACLE_POSE,
     INITIAL_CONFIG,
-) = chose_scenario("big_obstacle")
+) = chose_scenario("small_walle")
 
 ### CREATION OF THE ROBOT
 # Getting the urdf & srdf files
