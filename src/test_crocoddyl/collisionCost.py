@@ -67,6 +67,7 @@ class CostModelPairCollision(crocoddyl.CostModelAbstract):
         data.d = pydiffcol.distance(self.shape1_geom, self.shape1_placement, self.shape2_geom, self.shape2_placement, self.req, self.res)
         # calculate residual
         if data.d < 0:
+            # print("collision")
             data.residual.r[:] = self.res.w
         else:
             data.residual.r[:].fill(0.0)
