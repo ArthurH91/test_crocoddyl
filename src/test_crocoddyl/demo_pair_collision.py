@@ -2,6 +2,7 @@ from os.path import dirname, join, abspath
 import time
 import numpy as np
 import pinocchio as pin
+import argparse
 
 from wrapper_robot import RobotWrapper
 from wrapper_meshcat import MeshcatWrapper
@@ -9,6 +10,22 @@ from wrapper_meshcat import MeshcatWrapper
 from ocp_pair_collision import OCPPandaReachingCol
 
 from scenario import chose_scenario
+
+### PARSERS
+parser = argparse.ArgumentParser(description="Parser to select the scenario.")
+
+parser_group = parser.add_mutually_exclusive_group()
+parser_group.add_argument("-bigb", action="store_const", const="big_ball", dest="scenario", help="Set up the scenario to the big ball one.")
+parser_group.add_argument("-smallb", action="store_const", const="small_ball", dest="scenario", help="Set up the scenario to the small ball one.")
+parser_group.add_argument("-bigw", action="store_const", const="big_wall", dest="scenario", help="Set up the scenario to the big wall one.")
+parser_group.add_argument("-smallw", action="store_const", const="small_wall", dest="scenario", help="Set up the scenario to the small wall one.")
+args = parser.parse_args()
+
+scenario = args.scenario
+
+if scenario is None:
+    scenario = "small_ball"
+print(f"Scenaio : {scenario}")
 
 ### HYPERPARMS
 
@@ -25,7 +42,7 @@ from scenario import chose_scenario
     OBSTACLE,
     OBSTACLE_POSE,
     INITIAL_CONFIG,
-) = chose_scenario("small_walle")
+) = chose_scenario(scenario)
 
 ### CREATION OF THE ROBOT
 # Getting the urdf & srdf files
