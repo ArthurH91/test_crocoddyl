@@ -19,13 +19,16 @@ parser_group.add_argument("-bigb", action="store_const", const="big_ball", dest=
 parser_group.add_argument("-smallb", action="store_const", const="small_ball", dest="scenario", help="Set up the scenario to the small ball one.")
 parser_group.add_argument("-bigw", action="store_const", const="big_wall", dest="scenario", help="Set up the scenario to the big wall one.")
 parser_group.add_argument("-smallw", action="store_const", const="small_wall", dest="scenario", help="Set up the scenario to the small wall one.")
+
+parser_group.add_argument("-smallb2", action="store_const", const="small_ballv2", dest="scenario", help="Set up the scenario to the small ball one. v2")
+
 args = parser.parse_args()
 
 scenario = args.scenario
 
 if scenario is None:
     scenario = "small_ball"
-print(f"Scenaio : {scenario}")
+print(f"Scenario : {scenario}")
 
 ### HYPERPARMS
 
@@ -42,7 +45,8 @@ print(f"Scenaio : {scenario}")
     OBSTACLE,
     OBSTACLE_POSE,
     INITIAL_CONFIG,
-    DT
+    DT,
+    RUNNING_COST_ENDEFF
 ) = chose_scenario(scenario)
 
 ### CREATION OF THE ROBOT
@@ -103,6 +107,7 @@ problem = OCPPandaReachingCol(
     WEIGHT_TERM_COL=WEIGHT_TERM_COL,
     WEIGHT_UREG=WEIGHT_UREG,
     WEIGHT_XREG=WEIGHT_XREG,
+    RUNNING_COST_ENDEFF=RUNNING_COST_ENDEFF
 )
 ddp = problem()
 ddp.solve(X0, U0, maxiter=MAXIT)

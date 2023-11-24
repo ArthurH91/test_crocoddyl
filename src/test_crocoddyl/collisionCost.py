@@ -69,7 +69,7 @@ class CostModelPairCollision(crocoddyl.CostModelAbstract):
             self.res,
         )
         # calculate residual
-        if data.d < 0:
+        if data.d <=  0:
             data.residual.r[:] = self.res.w
         else:
             data.residual.r[:].fill(0.0)
@@ -78,7 +78,7 @@ class CostModelPairCollision(crocoddyl.CostModelAbstract):
     def calcDiff(self, data, x, u=None):
         nv = self.state.nv
 
-        if self.res.min_distance < 0:
+        if self.res.min_distance <= 0:
             pin.computeJointJacobians(self.pinocchio, data.shared.pinocchio, self.q)
 
             pydiffcol.distance_derivatives(
