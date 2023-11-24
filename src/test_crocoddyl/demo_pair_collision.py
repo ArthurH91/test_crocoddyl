@@ -42,6 +42,7 @@ print(f"Scenaio : {scenario}")
     OBSTACLE,
     OBSTACLE_POSE,
     INITIAL_CONFIG,
+    DT
 ) = chose_scenario(scenario)
 
 ### CREATION OF THE ROBOT
@@ -65,7 +66,6 @@ rdata = rmodel.createData()
 Q0 = np.concatenate([INITIAL_CONFIG] * (T + 1))
 
 # Initial vectors for the solver
-dt = 1e-3  # Time step
 x0 = np.concatenate(
     [INITIAL_CONFIG, pin.utils.zero(rmodel.nv)]
 )  # Initial configuration + no speed
@@ -96,7 +96,7 @@ problem = OCPPandaReachingCol(
     cdata,
     TARGET_POSE,
     T,
-    dt,
+    DT,
     x0,
     WEIGHT_TERM_POS=WEIGHT_TERM_POS,
     WEIGHT_COL=WEIGHT_COL,

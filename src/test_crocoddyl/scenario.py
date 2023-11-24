@@ -2,6 +2,7 @@ import numpy as np
 import pinocchio as pin
 import hppfcl
 
+
 def chose_scenario(scenario="big_obstacle"):
     """Choses the scenario optimized.
 
@@ -22,7 +23,9 @@ def chose_scenario(scenario="big_obstacle"):
         OBSTACLE (hppfcl.ShapeBase) : Hppfcl shape of the obstacle.
         OBSTACLE_POSE (pin.SE3): Obstacle pose in pin.SE3.
         INITIAL_CONFIG (np.ndarray) : Initial configuration of the robot.
+        DT (float) : Time step.
     """
+    DT = 1e-3
     if scenario == "big_ball":
         # Number of nodes
         T = 500
@@ -89,6 +92,34 @@ def chose_scenario(scenario="big_obstacle"):
               \n --------------------------------------------------------------"""
         )
 
+    elif scenario == "small_ball_sliding":
+        # Number of nodes
+        T = 500
+
+        # Weights in the solver
+        WEIGHT_XREG = 1e-2
+        WEIGHT_UREG = 1e-3
+        WEIGHT_TERM_POS = 100
+        WEIGHT_COL = 20
+        WEIGHT_TERM_COL = 50
+
+        # Number max of iterations in the solver
+        MAXIT = 100
+
+        # Target pose
+        TARGET = np.array([0, -0.2, 1.0])
+        TARGET_POSE = pin.SE3.Identity()
+        TARGET_POSE.translation = TARGET
+        TARGET_POSE.rotation = pin.utils.rotate("x", np.pi)
+
+        # Creation of the obstacle
+        OBSTACLE_DIM = 1e-1
+        OBSTACLE = hppfcl.Sphere(OBSTACLE_DIM)
+        OBSTACLE_POSE = pin.SE3.Identity()
+        OBSTACLE_POSE.translation = np.array([0.2, 0.0, 1.5])
+
+        INITIAL_CONFIG = np.array([0, 0, 0, 0, 0, 0, 0])
+
     elif scenario == "big_wall":
         # Number of nodes
         T = 350
@@ -153,7 +184,7 @@ def chose_scenario(scenario="big_obstacle"):
             """---------------------------------------------------------------\n Avoids collision but touches slightly the wall. 
               \n --------------------------------------------------------------"""
         )
-    else: 
+    else:
         raise ValueError("The name of this scenario is not defined.")
     return (
         T,
@@ -168,4 +199,5 @@ def chose_scenario(scenario="big_obstacle"):
         OBSTACLE,
         OBSTACLE_POSE,
         INITIAL_CONFIG,
+        DT,
     )
