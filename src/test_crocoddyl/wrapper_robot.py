@@ -29,7 +29,7 @@ import pinocchio as pin
 import example_robot_data as robex
 import hppfcl
 
-from utils import pairs_to_avoid, RED, BLUE_FULL
+from utils import pairs_to_avoid, RED, BLUE 
 
 # This class is for unwrapping an URDF and converting it to a model. It is also possible to add objects in the model,
 # such as a ball at a specific position.
@@ -42,7 +42,6 @@ class RobotWrapper:
         urdf_model_path=None,
         mesh_dir=None,
         srdf_model_path = None,
-        CAPSULE = False,
     ):
         """Initialize the wrapper with a scaling number of the target and the name of the robot wanted to get unwrapped.
 
@@ -51,7 +50,6 @@ class RobotWrapper:
             name_robot (str, optional): Name of the robot wanted to get unwrapped. Defaults to "franka".
             urdf_model_path (_type_, optional): _description_. Defaults to None.
             mesh_dir (_type_, optional): _description_. Defaults to None.
-            CAPSULE (bool, optional): Add capsules to the geom model. Defaults to False.
         """
 
         self._scale = scale
@@ -128,6 +126,7 @@ class RobotWrapper:
 
         # Replacing the cylinders by capsules
         for i, geometry_object in enumerate(collision_model_reduced_copy.geometryObjects):
+            
             if isinstance(geometry_object.geometry, hppfcl.Sphere):
                 self._collision_model_reduced.removeGeometryObject(geometry_object.name)
             # Only selecting the cylinders
@@ -156,7 +155,7 @@ class RobotWrapper:
             if isinstance(geometry_object.geometry, hppfcl.Cylinder):
                 self._collision_model_reduced.removeGeometryObject(geometry_object.name)
         
-    
+        
         # For some reasons, the following cylinders aren't removed with the loop from before.                 
         self._collision_model_reduced.removeGeometryObject("panda2_link0_sc_0")
         self._collision_model_reduced.removeGeometryObject('panda2_link7_sc_3')

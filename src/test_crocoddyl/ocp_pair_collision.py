@@ -86,6 +86,7 @@ class OCPPandaReachingCol:
             self._rmodel.getFrameId("panda2_leftfinger"),
             self._TARGET_POSE.translation,
         )
+        
         goalTrackingCost = crocoddyl.CostModelResidual(
             self._state, framePlacementResidual
         )
@@ -101,8 +102,7 @@ class OCPPandaReachingCol:
                     self._cmodel.collisionPairs[k].first
                 ].parentJoint,
                 self._cmodel.geometryObjects[16 + k].parentFrame,
-            ) 
-            # 16 + k for the geometry objects because the first 16 geometry objects are either the environnement or the camera / finger joint.
+            )
             self._runningCostModel.addCost(
                 "col" + str(k), colcost, self._WEIGHT_COL
             )

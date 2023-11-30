@@ -10,7 +10,8 @@ from wrapper_meshcat import MeshcatWrapper
 from ocp_pair_collision import OCPPandaReachingCol
 
 from scenario import chose_scenario
-from utils_plot import plot_costs
+from utils import BLUE
+from utils_plot import plot_costs, display_with_col
 ### PARSERS
 parser = argparse.ArgumentParser(description="Parser to select the scenario.")
 
@@ -26,7 +27,7 @@ args = parser.parse_args()
 scenario = args.scenario
 
 if scenario is None:
-    scenario = "small_ball"
+    scenario = "small_ball_sliding"
 print(f"Scenario : {scenario}")
 
 ### HYPERPARMS
@@ -85,6 +86,9 @@ OBSTACLE_GEOM_OBJECT = pin.GeometryObject(
     OBSTACLE,
     OBSTACLE_POSE,
 )
+OBSTACLE_GEOM_OBJECT.meshcolor = BLUE
+OBSTACLE_GEOM_OBJECT.meshColor = BLUE
+
 IG_OBSTACLE = cmodel.addGeometryObject(OBSTACLE_GEOM_OBJECT)
 
 # Adding the collision pairs to the model
@@ -116,29 +120,34 @@ log = ddp.getCallbacks()
 ### VISUALIZING THE RESULT
 # Creation of the meshcat visualizer
 MeshcatVis = MeshcatWrapper()
-vis = MeshcatVis.visualize(
+vis, meshcatvis = MeshcatVis.visualize(
     TARGET_POSE,
     robot_model=rmodel,
     robot_collision_model=cmodel,
     robot_visual_model=vmodel,
 )
-vis = vis[0]
+vis = vis
 # Displaying the initial configuration of the robot
 vis.display(INITIAL_CONFIG)
 
 Q = []
-
+for xs in ddp.xs:
+    Q.append(np.array(xs[:7].tolist()))
 rd = ddp.problem.runningDatas
 plot_costs(rd)
 
 input()
 while True:
-    for xs in ddp.xs:
-        vis.display(np.array(xs[:7].tolist()))
-        time.sleep(1e-3)
-        Q.append(np.array(xs[:7].tolist()))
-        # input()
-    input("Replay?")
+    display_with_col(Q, vis, meshcatvis, rmodel, rdata, cmodel, cdata)
+    input("replay?")
+input()
+# while True:
+#     for xs in ddp.xs:
+#         vis.display(np.array(xs[:7].tolist()))
+#         time.sleep(1e-3)
+#         Q.append(np.array(xs[:7].tolist()))
+#         # input()
+#     input("Replay?")
 
 # Q_flat_list = [item for sublist in Q for item in sublist]
 # results = {

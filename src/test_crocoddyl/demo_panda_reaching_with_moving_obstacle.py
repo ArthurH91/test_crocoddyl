@@ -10,7 +10,8 @@ from wrapper_robot import RobotWrapper
 from ocp_pair_collision import OCPPandaReachingCol
 from scenario import chose_scenario
 
-from utils import get_transform
+from utils import get_transform, BLUE
+from utils_plot import display_with_col
 
 
 
@@ -66,8 +67,12 @@ rmodel, cmodel, vmodel = robot_wrapper()
 rdata = rmodel.createData()
 
 ###* DISPLACING THE OBSTACLE THROUGH THETA
-theta_list = np.arange(-0.4, 0, 0.2 / N_OBSTACLES)
-theta_list = np.arange(-0.28, -0.20, 0.005)
+# theta_list = np.arange(-0.4, 0, 0.2 / N_OBSTACLES)
+
+start = 0
+stop = 0.6
+step = 0.025
+theta_list = np.arange(start,stop, step)
 
 #Initial X0
 x0 = np.concatenate([INITIAL_CONFIG, pin.utils.zero(rmodel.nv)])
@@ -75,7 +80,8 @@ x0 = np.concatenate([INITIAL_CONFIG, pin.utils.zero(rmodel.nv)])
 # For  the WARM START
 X0_WS = [x0 for i in range(T+1)]
 
-
+OBSTACLE_POSE.translation += np.array([0,start,0])
+    
 
 OBSTACLE_GEOM_OBJECT = pin.GeometryObject(
     "obstacle",
@@ -83,7 +89,9 @@ OBSTACLE_GEOM_OBJECT = pin.GeometryObject(
     rmodel.frames[rmodel.getFrameId("universe")].parentJoint,
     OBSTACLE,
     OBSTACLE_POSE,
+    
 )
+OBSTACLE_GEOM_OBJECT.meshcolor = BLUE
 IG_OBSTACLE = cmodel.addGeometryObject(OBSTACLE_GEOM_OBJECT)
 
 ###* ADDING THE COLLISION PAIRS 
@@ -101,14 +109,12 @@ for k, theta in enumerate(theta_list):
     print(f"#################################################### ITERATION n°{k} out of {len(theta_list)-1}####################################################")
     print(f"theta = {round(theta,3)} , step = {round(theta_list[0]-theta_list[1], 3)}, theta min = {round(theta_list[0],3)}, theta max = {round(theta_list[-1],3)} ")
     # Generate a reachable obstacle
-    OBSTACLE_POSE.translation = TARGET_POSE.translation / 2 + [
-        0.2 + theta,
-        0 + theta,
-        1.0 + theta,
-    ]    
+    OBSTACLE_POSE.translation += np.array([0,start,0])
+
     
     # Updating the pose of the obstacle in the collision model
     cmodel.geometryObjects[cmodel.getGeometryId("obstacle")].placement = OBSTACLE_POSE
+    pin.framesForwardKinematics(rmodel, rdata, INITIAL_CONFIG)
     pin.updateGeometryPlacements(rmodel, rdata, cmodel, cdata, INITIAL_CONFIG)
 
     # CREATING THE PROBLEM WITHOUT WARM START
@@ -157,13 +163,12 @@ for k, theta in enumerate(theta_list):
         RUNNING_COST_ENDEFF=RUNNING_COST_ENDEFF
     )
     ddp = problem()
-    
-    if FIRST_IT:
-        U0_WS = ddp.problem.quasiStatic(X0_WS[:-1])
-        FIRST_IT = False
     # Solving the problem
-    xx = ddp.solve(X0_WS, U0_WS)
-
+    if FIRST_IT:
+        xx = ddp.solve()
+        FIRST_IT = False
+    else:
+        xx = ddp.solve(X0_WS, U0_WS)
     log = ddp.getCallbacks()[0]
 
     Q_sol = []
@@ -178,8 +183,11 @@ for k, theta in enumerate(theta_list):
 ###* DISPLAYING THE RESULTS IN MESHCAT
 
 # Removing the obstacle of the geometry model because 
-cmodel.removeGeometryObject("obstacle")
+OBSTACLE_POSE.translation += np.array([0,start,0])
 
+cmodel.geometryObjects[cmodel.getGeometryId("obstacle")].placement = OBSTACLE_POSE
+pin.framesForwardKinematics(rmodel, rdata, INITIAL_CONFIG)
+pin.updateGeometryPlacements(rmodel, rdata, cmodel, cdata, INITIAL_CONFIG)
 # SETTING UP THE VISUALIZER
 MeshcatVis = MeshcatWrapper()
 vis, meshcatvis = MeshcatVis.visualize(
@@ -196,24 +204,32 @@ vis.display(INITIAL_CONFIG)
 while True:
     for k  in range(len(theta_list)):
         theta = theta_list[k]
-        print(f"press enter for displaying the {k}-th trajectory where theta = {theta}")
+        print(f"press enter for displaying the {k}-th trajectory where theta = {round(theta,3)}")
         input()
+
         Q = list_Q_theta[k]
         Q_WS = list_Q_theta_ws[k]
-        OBSTACLE_POSE.translation = TARGET_POSE.translation / 2 + [
-            0.2 + theta,
-            0 + theta,
-            1.0 + theta,
-        ]    
         
+        OBSTACLE_POSE.translation += np.array([0,theta,0])
+        
+        cmodel.geometryObjects[cmodel.getGeometryId("obstacle")].placement = OBSTACLE_POSE
+        pin.framesForwardKinematics(rmodel, rdata, INITIAL_CONFIG)
+        pin.updateGeometryPlacements(rmodel, rdata, cmodel, cdata, INITIAL_CONFIG)
         meshcatvis["obstacle"].set_transform(get_transform(OBSTACLE_POSE))
 
-        for q in Q:
-            vis.display(q)
-            time.sleep(1e-3)  
-        print("Now press enter for the same k but with a warm start")
+        display_with_col(Q, vis, meshcatvis, rmodel, rdata, cmodel, cdata)
+        print("Press enter to get rid of the little green dots")
         input()  
-        for q in Q_WS:
-            vis.display(q)
-            time.sleep(1e-3)  
+        for k in range(T):
+            for i in range(len(cmodel.collisionPairs)):
+                meshcatvis["cp"+ str(i) + str(k)].delete()
+        print("Now press enter for the same k but with a warm start")
+        input()
+        display_with_col(Q_WS, vis, meshcatvis, rmodel, rdata, cmodel, cdata)
+        print("Press enter to get rid of the little green dots")
+        input()
+        for k in range(T):
+            for i in range(len(cmodel.collisionPairs)):
+                meshcatvis["cp"+ str(i) + str(k)].delete()
+
     input("replay?")

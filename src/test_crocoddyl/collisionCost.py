@@ -44,7 +44,7 @@ class CostModelPairCollision(crocoddyl.CostModelAbstract):
 
         ### Computes the distance for the collision pair pair_id
         # Updating the position of the joints & the geometry objects.
-        pin.forwardKinematics(self.pinocchio, data.shared.pinocchio, self.q)
+        pin.framesForwardKinematics(self.pinocchio, data.shared.pinocchio, self.q)
         pin.updateGeometryPlacements(
             self.pinocchio,
             data.shared.pinocchio,
@@ -88,6 +88,8 @@ class CostModelPairCollision(crocoddyl.CostModelAbstract):
         # The residual is equal to the vector separating the 2 closest points of the 2 shapes.
 
         if self.res.min_distance <= 0:
+            
+            # print(f"collision pair : { self.geom_model.geometryObjects[self.shape1_id].name} & {self.geom_model.geometryObjects[self.shape2_id].name}")
             data.residual.r[:] = self.res.w
 
             #! calc of the activation ?
@@ -111,7 +113,7 @@ class CostModelPairCollision(crocoddyl.CostModelAbstract):
 
         ### Computes the distance for the collision pair pair_id
         # Updating the position of the joints & the geometry objects.
-        pin.forwardKinematics(self.pinocchio, data.shared.pinocchio, self.q)
+        pin.framesForwardKinematics(self.pinocchio, data.shared.pinocchio, self.q)
         pin.updateGeometryPlacements(
             self.pinocchio,
             data.shared.pinocchio,
@@ -179,7 +181,7 @@ class CostModelPairCollision(crocoddyl.CostModelAbstract):
             )
 
             # The jacobian here is the multiplication of the jacobian of the end effector and the jacobian of the distance between the geometry object and the obstacle
-            J = np.dot(self.res_diff.dw_dM1, jacobian)
+            J = np.dot(self.res_diff.dw_loc_dM1, jacobian)
 
             # compute the residual derivatives
             data.residual.Rx[:3, :nq] = J
@@ -190,6 +192,7 @@ class CostModelPairCollision(crocoddyl.CostModelAbstract):
         # Filling the gradient of the cost & its hessian
         data.Lx[:] = np.dot(data.residual.Rx.T, data.residual.r)
         data.Lxx[:] = np.dot(data.residual.Rx.T, data.residual.Rx)
+        
 
     def numdiff(self, f, x, data, eps=1e-8):
         """Estimate df/dx at x with finite diff of step eps
