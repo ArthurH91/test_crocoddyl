@@ -101,9 +101,10 @@ class OCPPandaReachingCol:
                     self._cmodel.collisionPairs[k].first
                 ].parentJoint,
                 self._cmodel.geometryObjects[16 + k].parentFrame,
-            )
+            ) 
+            # 16 + k for the geometry objects because the first 16 geometry objects are either the environnement or the camera / finger joint.
             self._runningCostModel.addCost(
-                "col" + str(k), colcost, 10, self._WEIGHT_COL
+                "col" + str(k), colcost, self._WEIGHT_COL
             )
             self._terminalCostModel.addCost(
                 "col_term_" + str(k), colcost, self._WEIGHT_TERM_COL

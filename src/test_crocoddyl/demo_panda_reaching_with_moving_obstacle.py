@@ -45,7 +45,8 @@ N_OBSTACLES = args.nobstacle
     OBSTACLE,
     OBSTACLE_POSE,
     INITIAL_CONFIG,
-    DT
+    DT,
+    RUNNING_COST_ENDEFF
 ) = chose_scenario("small_ball_sliding")
 
 
@@ -66,6 +67,8 @@ rdata = rmodel.createData()
 
 ###* DISPLACING THE OBSTACLE THROUGH THETA
 theta_list = np.arange(-0.4, 0, 0.2 / N_OBSTACLES)
+theta_list = np.arange(-0.28, -0.20, 0.005)
+
 #Initial X0
 x0 = np.concatenate([INITIAL_CONFIG, pin.utils.zero(rmodel.nv)])
 
@@ -94,8 +97,9 @@ list_Q_theta = []
 list_Q_theta_ws = []
 FIRST_IT = True
 ###* GOING THROUGH ALL THE THETA AND SOLVING THE OCP FOR EACH THETA
-for theta in theta_list:
-    print(f"theta = {theta}")
+for k, theta in enumerate(theta_list):
+    print(f"#################################################### ITERATION n°{k} out of {len(theta_list)-1}####################################################")
+    print(f"theta = {round(theta,3)} , step = {round(theta_list[0]-theta_list[1], 3)}, theta min = {round(theta_list[0],3)}, theta max = {round(theta_list[-1],3)} ")
     # Generate a reachable obstacle
     OBSTACLE_POSE.translation = TARGET_POSE.translation / 2 + [
         0.2 + theta,
@@ -121,6 +125,7 @@ for theta in theta_list:
         WEIGHT_TERM_COL=WEIGHT_TERM_COL,
         WEIGHT_UREG=WEIGHT_UREG,
         WEIGHT_XREG=WEIGHT_XREG,
+        RUNNING_COST_ENDEFF= RUNNING_COST_ENDEFF
     )
     ddp = problem()
     # Solving the problem
@@ -149,6 +154,7 @@ for theta in theta_list:
         WEIGHT_TERM_COL=WEIGHT_TERM_COL,
         WEIGHT_UREG=WEIGHT_UREG,
         WEIGHT_XREG=WEIGHT_XREG,
+        RUNNING_COST_ENDEFF=RUNNING_COST_ENDEFF
     )
     ddp = problem()
     
@@ -168,7 +174,7 @@ for theta in theta_list:
     X0_WS = log.xs
     U0_WS = log.us
 
-    print("-------------------------------------------------------------------------------------------------------------------------")
+    print(f"---------------------------------------------------------------------------------------------------------------------------")
 ###* DISPLAYING THE RESULTS IN MESHCAT
 
 # Removing the obstacle of the geometry model because 
@@ -205,8 +211,8 @@ while True:
         for q in Q:
             vis.display(q)
             time.sleep(1e-3)  
+        print("Now press enter for the same k but with a warm start")
         input()  
-        print("Now same k but with a warm start")
         for q in Q_WS:
             vis.display(q)
             time.sleep(1e-3)  

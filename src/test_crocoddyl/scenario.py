@@ -68,11 +68,10 @@ def chose_scenario(scenario="big_obstacle"):
 
         # Weights in the solver
         WEIGHT_XREG = 1e-2
-        WEIGHT_UREG = 1e-3
+        WEIGHT_UREG = 1e-2
         WEIGHT_TERM_POS = 100
-        WEIGHT_COL = 100
+        WEIGHT_COL = 1000
         WEIGHT_TERM_COL = 1000
-
         # Number max of iterations in the solver
         MAXIT = 100
 
@@ -96,7 +95,7 @@ def chose_scenario(scenario="big_obstacle"):
               \n --------------------------------------------------------------"""
         )
         
-    elif scenario == "small_ballv2":
+    elif scenario == "debug":
         # Number of nodes
         T = 500
 
@@ -104,7 +103,7 @@ def chose_scenario(scenario="big_obstacle"):
         WEIGHT_XREG = 1e-2
         WEIGHT_UREG = 1e-3
         WEIGHT_TERM_POS = 100
-        WEIGHT_COL = 10
+        WEIGHT_COL = 100000
         WEIGHT_TERM_COL = 10
 
         # Number max of iterations in the solver
@@ -117,23 +116,23 @@ def chose_scenario(scenario="big_obstacle"):
         TARGET_POSE.rotation = pin.utils.rotate("x", np.pi)
 
         # Creation of the obstacle
-        OBSTACLE_DIM = 1e-1
+        OBSTACLE_DIM = 3e-1
         OBSTACLE = hppfcl.Sphere(OBSTACLE_DIM)
         OBSTACLE_POSE = pin.SE3.Identity()
-        OBSTACLE_POSE.translation = np.array([0.15, 0.087, 1.2])
+        OBSTACLE_POSE.translation = np.array([0.15, 0.3, 1.2])
 
-        theta = -0.1
-        OBSTACLE_POSE.translation = TARGET_POSE.translation / 2 + [
-            0.2 + theta,
-            0 + theta,
-            1.0 + theta,
-        ]    
+        # theta = -0.1
+        # OBSTACLE_POSE.translation = TARGET_POSE.translation / 2 + [
+        #     0.2 + theta,
+        #     0 + theta,
+        #     1.0 + theta,
+        # ]    
 
         INITIAL_CONFIG = np.array([0, 0, 0, 0, 0, 0, 0])
         RUNNING_COST_ENDEFF = True
 
         print(
-            """---------------------------------------------------------------\n Small collisions at the end but collision avoidance otherwise. 
+            """---------------------------------------------------------------\n DEBUG 
               \n --------------------------------------------------------------"""
         )
 
@@ -155,7 +154,7 @@ def chose_scenario(scenario="big_obstacle"):
         TARGET = np.array([0, -0.2, 1.0])
         TARGET_POSE = pin.SE3.Identity()
         TARGET_POSE.translation = TARGET
-        TARGET_POSE.rotation = pin.utils.rotate("x", np.pi)
+        # TARGET_POSE.rotation = pin.utils.rotate("x", np.pi)
 
         # Creation of the obstacle
         OBSTACLE_DIM = 1e-1
@@ -174,8 +173,8 @@ def chose_scenario(scenario="big_obstacle"):
         WEIGHT_XREG = 1e-3
         WEIGHT_UREG = 1e-3
         WEIGHT_TERM_POS = 100
-        WEIGHT_COL = 1000
-        WEIGHT_TERM_COL = 1000
+        WEIGHT_COL = 100
+        WEIGHT_TERM_COL = 10
 
         # Number max of iterations in the solver
         MAXIT = 100
@@ -203,7 +202,7 @@ def chose_scenario(scenario="big_obstacle"):
         T = 500
 
         # Weights in the solver
-        WEIGHT_XREG = 1e-5
+        WEIGHT_XREG = 1e-3
         WEIGHT_UREG = 1e-3
         WEIGHT_TERM_POS = 100
         WEIGHT_COL = 20

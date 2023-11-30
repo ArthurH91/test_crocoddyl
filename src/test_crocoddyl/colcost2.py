@@ -39,11 +39,8 @@ class CostModelPairCollision(crocoddyl.CostModelAbstract):
         self.parentFrame = parentFrame
 
     def calc(self, data, x, u=None):
-        # Storing q outside of the state vector
         self.q = np.array(x[: self.state.nq])
-
-        ### Computes the distance for the collision pair pair_id
-        # Updating the position of the joints & the geometry objects.
+        # computes the distance for the collision pair pair_id
         pin.forwardKinematics(self.pinocchio, data.shared.pinocchio, self.q)
         pin.updateGeometryPlacements(
             self.pinocchio,
@@ -53,26 +50,17 @@ class CostModelPairCollision(crocoddyl.CostModelAbstract):
             self.q,
         )
 
-        # Distance Request & Result from hppfcl / pydiffcol
         self.req, self.req_diff = select_strategy("first_order_gaussian")
         self.res = pydiffcol.DistanceResult()
         self.res_diff = pydiffcol.DerivativeResult()
-
-        # Getting the ID of the first shape from the collision pair id
         self.shape1_id = self.geom_model.collisionPairs[self.pair_id].first
-
-        # Getting its geometry
         self.shape1_geom = self.geom_model.geometryObjects[self.shape1_id].geometry
-
-        # Getting its pose
         self.shape1_placement = self.geom_data.oMg[self.shape1_id]
 
-        # Doing the same for the second shape.
         self.shape2_id = self.geom_model.collisionPairs[self.pair_id].second
         self.shape2_geom = self.geom_model.geometryObjects[self.shape2_id].geometry
         self.shape2_placement = self.geom_data.oMg[self.shape2_id]
 
-        # Computing the distance
         data.d = pydiffcol.distance(
             self.shape1_geom,
             self.shape1_placement,
@@ -81,83 +69,24 @@ class CostModelPairCollision(crocoddyl.CostModelAbstract):
             self.req,
             self.res,
         )
-
+        
         # calculate residual
-
-        # Here the residual isn't 0 only when the distance is inferior to 0.
-        # The residual is equal to the vector separating the 2 closest points of the 2 shapes.
-
         if self.res.min_distance <= 0:
             data.residual.r[:] = self.res.w
+            data.cost = 0.5 * np.dot(self.res.w, self.res.w)
 
-            #! calc of the activation ?
-            self.activation.calc(data.activation, data.residual.r)
-            data.cost = data.activation.a_value
-
-        # If the distance is not inferior to 0, the residual is null.
         else:
             data.residual.r[:].fill(0.0)
-
-            #! calc of the activation ?
-            self.activation.calc(data.activation, data.residual.r)
-            data.cost = data.activation.a_value
-
+            data.cost= 0
+        
+        self.res_numdiff = data.residual.r[:]
+            
     def calcDiff(self, data, x, u=None):
-        # Storing nq outside of state.
-        nq = self.state.nq
+        nv = self.state.nv
 
-        # Storing q outside of the state vector.
-        self.q = np.array(x[:nq])
-
-        ### Computes the distance for the collision pair pair_id
-        # Updating the position of the joints & the geometry objects.
-        pin.forwardKinematics(self.pinocchio, data.shared.pinocchio, self.q)
-        pin.updateGeometryPlacements(
-            self.pinocchio,
-            data.shared.pinocchio,
-            self.geom_model,
-            self.geom_data,
-            self.q,
-        )
-
-        # Distance Request & Result from hppfcl / pydiffcol
-        self.req, self.req_diff = select_strategy("first_order_gaussian")
-        self.res = pydiffcol.DistanceResult()
-        self.res_diff = pydiffcol.DerivativeResult()
-
-        # Getting the ID of the first shape from the collision pair id
-        self.shape1_id = self.geom_model.collisionPairs[self.pair_id].first
-
-        # Getting its geometry
-        self.shape1_geom = self.geom_model.geometryObjects[self.shape1_id].geometry
-
-        # Getting its pose
-        self.shape1_placement = self.geom_data.oMg[self.shape1_id]
-
-        # Doing the same for the second shape.
-        self.shape2_id = self.geom_model.collisionPairs[self.pair_id].second
-        self.shape2_geom = self.geom_model.geometryObjects[self.shape2_id].geometry
-        self.shape2_placement = self.geom_data.oMg[self.shape2_id]
-
-        # Computing the distance
-        data.d = pydiffcol.distance(
-            self.shape1_geom,
-            self.shape1_placement,
-            self.shape2_geom,
-            self.shape2_placement,
-            self.req,
-            self.res,
-        )
-
-        #! calcDiff of activation ?
-        self.activation.calcDiff(data.activation, data.residual.r)
-
-        # Here the derivative of the residual & cost are computed only when the distance is inferior to 0.
         if self.res.min_distance <= 0:
-            # Computing the pinocchio jacobians
             pin.computeJointJacobians(self.pinocchio, data.shared.pinocchio, self.q)
 
-            # Computing the distance derivatives of pydiffcol
             pydiffcol.distance_derivatives(
                 self.shape1_geom,
                 self.shape1_placement,
@@ -169,7 +98,6 @@ class CostModelPairCollision(crocoddyl.CostModelAbstract):
                 self.res_diff,
             )
 
-            # Jacobian of the parent frame of the shape1
             jacobian = pin.computeFrameJacobian(
                 self.pinocchio,
                 data.shared.pinocchio,
@@ -182,15 +110,14 @@ class CostModelPairCollision(crocoddyl.CostModelAbstract):
             J = np.dot(self.res_diff.dw_dM1, jacobian)
 
             # compute the residual derivatives
-            data.residual.Rx[:3, :nq] = J
-
+            data.residual.Rx[:3, :self.state.nq] = J
+            
         else:
-            data.residual.Rx[:3, :nq].fill(0.0)
-
-        # Filling the gradient of the cost & its hessian
+            data.residual.Rx[:3, :nv].fill(0.0)
+        
         data.Lx[:] = np.dot(data.residual.Rx.T, data.residual.r)
         data.Lxx[:] = np.dot(data.residual.Rx.T, data.residual.Rx)
-
+        
     def numdiff(self, f, x, data, eps=1e-8):
         """Estimate df/dx at x with finite diff of step eps
 
@@ -220,6 +147,7 @@ class CostModelPairCollision(crocoddyl.CostModelAbstract):
             xc[i] = x[i]
         return np.array(res).T
 
+           
     def createData(self, collector):
         data = CostDataPairCollision(self, collector)
         return data

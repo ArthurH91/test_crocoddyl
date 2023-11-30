@@ -10,7 +10,7 @@ from wrapper_meshcat import MeshcatWrapper
 from ocp_pair_collision import OCPPandaReachingCol
 
 from scenario import chose_scenario
-
+from utils_plot import plot_costs
 ### PARSERS
 parser = argparse.ArgumentParser(description="Parser to select the scenario.")
 
@@ -19,8 +19,7 @@ parser_group.add_argument("-bigb", action="store_const", const="big_ball", dest=
 parser_group.add_argument("-smallb", action="store_const", const="small_ball", dest="scenario", help="Set up the scenario to the small ball one.")
 parser_group.add_argument("-bigw", action="store_const", const="big_wall", dest="scenario", help="Set up the scenario to the big wall one.")
 parser_group.add_argument("-smallw", action="store_const", const="small_wall", dest="scenario", help="Set up the scenario to the small wall one.")
-
-parser_group.add_argument("-smallb2", action="store_const", const="small_ballv2", dest="scenario", help="Set up the scenario to the small ball one. v2")
+parser_group.add_argument("-debug", action="store_const", const="debug", dest="scenario", help="Set up the debug scenario")
 
 args = parser.parse_args()
 
@@ -126,10 +125,13 @@ vis = MeshcatVis.visualize(
 vis = vis[0]
 # Displaying the initial configuration of the robot
 vis.display(INITIAL_CONFIG)
-input()
 
 Q = []
 
+rd = ddp.problem.runningDatas
+plot_costs(rd)
+
+input()
 while True:
     for xs in ddp.xs:
         vis.display(np.array(xs[:7].tolist()))
@@ -138,9 +140,9 @@ while True:
         # input()
     input("Replay?")
 
-Q_flat_list = [item for sublist in Q for item in sublist]
-results = {
-    "Q": Q_flat_list,
-}
+# Q_flat_list = [item for sublist in Q for item in sublist]
+# results = {
+#     "Q": Q_flat_list,
+# }
 # with open("results_to_evaluate.json", "w") as outfile:
 #     json.dump(results, outfile)
