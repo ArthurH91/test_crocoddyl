@@ -88,13 +88,13 @@ def chose_scenario(scenario="big_obstacle"):
         OBSTACLE_POSE.translation = np.array([0.15, 0.087, 1.2])
 
         INITIAL_CONFIG = np.array([0, 0, 0, 0, 0, 0, 0])
-        
+
         RUNNING_COST_ENDEFF = True
         print(
             """---------------------------------------------------------------\n Small collisions at the end but collision avoidance otherwise. 
               \n --------------------------------------------------------------"""
         )
-        
+
     elif scenario == "debug":
         # Number of nodes
         T = 500
@@ -126,7 +126,7 @@ def chose_scenario(scenario="big_obstacle"):
         #     0.2 + theta,
         #     0 + theta,
         #     1.0 + theta,
-        # ]    
+        # ]
 
         INITIAL_CONFIG = np.array([0, 0, 0, 0, 0, 0, 0])
         RUNNING_COST_ENDEFF = True
@@ -221,11 +221,45 @@ def chose_scenario(scenario="big_obstacle"):
         OBSTACLE_DIM = np.array([1e-2, 3e-1, 3e-1])
         OBSTACLE = hppfcl.Box(OBSTACLE_DIM)
         OBSTACLE_POSE = pin.SE3.Identity()
-        OBSTACLE_POSE.translation = np.array([0.22, 0., 1.5])
+        OBSTACLE_POSE.translation = np.array([0.22, 0.0, 1.5])
 
         # INITIAL_CONFIG = np.array([0, 0, 0, -0.5, 0, 1, 0])
         INITIAL_CONFIG = np.array([0, 0, 0, 0, 0, 0, 0])
 
+        RUNNING_COST_ENDEFF = True
+        print(
+            """---------------------------------------------------------------\n Avoids collision but touches slightly the wall. 
+              \n --------------------------------------------------------------"""
+        )
+    elif scenario == "small_wall_floor":
+        # Number of nodes
+        T = 500
+
+        # Weights in the solver
+        WEIGHT_XREG = 1e-3
+        WEIGHT_UREG = 1e-2
+        WEIGHT_TERM_POS = 1e2
+        WEIGHT_COL = 1e8
+        WEIGHT_TERM_COL = 1e8
+
+        # Number max of iterations in the solver
+        MAXIT = 200
+
+        # Target pose
+        TARGET = np.array([0, 0, 0.85])
+        TARGET_POSE = pin.SE3.Identity()
+        TARGET_POSE.translation = TARGET
+        TARGET_POSE.rotation = pin.utils.rotate("x", np.pi)
+
+        # Creation of the obstacle
+        OBSTACLE_DIM = np.array([1e-2, 3e-1, 3e-1])
+        OBSTACLE = hppfcl.Box(OBSTACLE_DIM)
+        OBSTACLE_POSE = pin.SE3.Identity()
+        OBSTACLE_POSE.translation = np.array([0.42, 0.0, 0.9])
+
+        # INITIAL_CONFIG = np.array([0, 0, 0, -0.5, 0, 1, 0])
+        INITIAL_CONFIG = np.array([0, 0, 0, 0, 0, 0, 0])
+        # INITIAL_CONFIG = np.array([0.0, 0.5, 0.0, -0.2, 0.0, 0.0, 0.0])
         RUNNING_COST_ENDEFF = True
         print(
             """---------------------------------------------------------------\n Avoids collision but touches slightly the wall. 
@@ -247,5 +281,5 @@ def chose_scenario(scenario="big_obstacle"):
         OBSTACLE_POSE,
         INITIAL_CONFIG,
         DT,
-        RUNNING_COST_ENDEFF
+        RUNNING_COST_ENDEFF,
     )

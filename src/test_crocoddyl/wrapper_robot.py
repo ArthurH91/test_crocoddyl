@@ -42,6 +42,7 @@ class RobotWrapper:
         urdf_model_path=None,
         mesh_dir=None,
         srdf_model_path = None,
+        auto_col = False,
     ):
         """Initialize the wrapper with a scaling number of the target and the name of the robot wanted to get unwrapped.
 
@@ -57,6 +58,7 @@ class RobotWrapper:
         self._mesh_dir = mesh_dir
         self._srdf_model_path = srdf_model_path
         self._color = np.array([249, 136, 126, 255]) / 255
+        self._auto_col = auto_col
 
     def __call__(self):
         """Create a robot with a new frame at the end effector position and place a hppfcl: ShapeBase cylinder at this position.
@@ -163,18 +165,19 @@ class RobotWrapper:
         self._collision_model_reduced.removeGeometryObject('panda2_link4_sc_0')
         self._collision_model_reduced.removeGeometryObject('panda2_link2_sc_0')             
         
-        # self._collision_model_reduced.addAllCollisionPairs()
-        # self._collision_model_reduced.addCollisionPair(pin.CollisionPair(self._collision_model_reduced.getGeometryId("panda2_link2_capsule37"),self._collision_model_reduced.getGeometryId("panda2_link6_capsule22") ))        
-        # self._collision_model_reduced.addCollisionPair(pin.CollisionPair(self._collision_model_reduced.getGeometryId("panda2_link4_capsule31"),self._collision_model_reduced.getGeometryId("panda2_link6_capsule22") ))        
-        # self._collision_model_reduced.addCollisionPair(pin.CollisionPair(self._collision_model_reduced.getGeometryId("panda2_link4_capsule31"),self._collision_model_reduced.getGeometryId("panda2_link5_capsule28") ))        
-        # self._collision_model_reduced.addCollisionPair(pin.CollisionPair(self._collision_model_reduced.getGeometryId("panda2_link4_capsule31"),self._collision_model_reduced.getGeometryId("panda2_link5_capsule25") ))        
-        # self._collision_model_reduced.addCollisionPair(pin.CollisionPair(self._collision_model_reduced.getGeometryId("panda2_link4_capsule31"),self._collision_model_reduced.getGeometryId("panda2_link3_capsule34") ))        
-        # self._collision_model_reduced.addCollisionPair(pin.CollisionPair(self._collision_model_reduced.getGeometryId("panda2_leftfinger_0"),self._collision_model_reduced.getGeometryId("support_link_1") )) 
-        # self._collision_model_reduced.addCollisionPair(pin.CollisionPair(self._collision_model_reduced.getGeometryId("panda2_leftfinger_0"),self._collision_model_reduced.getGeometryId("support_link_0") )) 
-        
-        
-        # pin.removeCollisionPairs(self._model_reduced, self._collision_model_reduced, self._srdf_model_path)
-
+        if self._auto_col:
+            self._collision_model_reduced.addAllCollisionPairs()
+            # self._collision_model_reduced.addCollisionPair(pin.CollisionPair(self._collision_model_reduced.getGeometryId("panda2_link2_capsule37"),self._collision_model_reduced.getGeometryId("panda2_link6_capsule22") ))        
+            # self._collision_model_reduced.addCollisionPair(pin.CollisionPair(self._collision_model_reduced.getGeometryId("panda2_link4_capsule31"),self._collision_model_reduced.getGeometryId("panda2_link6_capsule22") ))        
+            # self._collision_model_reduced.addCollisionPair(pin.CollisionPair(self._collision_model_reduced.getGeometryId("panda2_link4_capsule31"),self._collision_model_reduced.getGeometryId("panda2_link5_capsule28") ))        
+            # self._collision_model_reduced.addCollisionPair(pin.CollisionPair(self._collision_model_reduced.getGeometryId("panda2_link4_capsule31"),self._collision_model_reduced.getGeometryId("panda2_link5_capsule25") ))        
+            # self._collision_model_reduced.addCollisionPair(pin.CollisionPair(self._collision_model_reduced.getGeometryId("panda2_link4_capsule31"),self._collision_model_reduced.getGeometryId("panda2_link3_capsule34") ))        
+            # self._collision_model_reduced.addCollisionPair(pin.CollisionPair(self._collision_model_reduced.getGeometryId("panda2_leftfinger_0"),self._collision_model_reduced.getGeometryId("support_link_1") )) 
+            # self._collision_model_reduced.addCollisionPair(pin.CollisionPair(self._collision_model_reduced.getGeometryId("panda2_leftfinger_0"),self._collision_model_reduced.getGeometryId("support_link_0") )) 
+            
+            
+            pin.removeCollisionPairs(self._model_reduced, self._collision_model_reduced, self._srdf_model_path)
+            
         return (
             self._model_reduced,
             self._collision_model_reduced,

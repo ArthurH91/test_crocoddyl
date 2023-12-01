@@ -15,7 +15,6 @@ class CostModelPairCollision(crocoddyl.CostModelAbstract):
         geom_data,
         pair_id: int,
         joint_id: int,
-        parentFrame: int,
     ):
         """_summary_
 
@@ -36,7 +35,6 @@ class CostModelPairCollision(crocoddyl.CostModelAbstract):
         self.pair_id = pair_id
         self.joint_id = joint_id
         self.geom_data = geom_data
-        self.parentFrame = parentFrame
 
     def calc(self, data, x, u=None):
         # Storing q outside of the state vector
@@ -67,6 +65,8 @@ class CostModelPairCollision(crocoddyl.CostModelAbstract):
         # Getting its pose
         self.shape1_placement = self.geom_data.oMg[self.shape1_id]
 
+        # Parent frame 
+        self.parentFrame = self.geom_model.geometryObjects[self.shape1_id].parentFrame
         # Doing the same for the second shape.
         self.shape2_id = self.geom_model.collisionPairs[self.pair_id].second
         self.shape2_geom = self.geom_model.geometryObjects[self.shape2_id].geometry

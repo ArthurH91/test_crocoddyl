@@ -21,21 +21,28 @@ from wrapper_robot import RobotWrapper
 from utils import get_transform
 
 def plot_costs(rd):
+    """Plot all the costs of the problem.
+
+    Args:
+        rd (runningData): Running Data of crocoddyl.
+    """
     ### Construction of the dictionnary
     costs_dict = {}
+    # Filling the dictionnary with empty entries of the name of the costs
     for name in rd[0].differential.costs.costs.todict():
         costs_dict[name] = []
+    # Filling the lists of the dictionnary with the values of the said costs.
     for name in costs_dict:
         for data in rd:
             costs_dict[name].append(data.differential.costs.costs[name].cost)
 
     ### Plotting
-
     for name_cost in costs_dict:
+        # Plotting the collisions costs with "-o"
         if "col" in name_cost:
             plt.plot(costs_dict[name_cost], "-o", label=name_cost, markersize=3)
-        # else:
-        #     plt.plot(costs_dict[name_cost], "o", label=name_cost, markersize=3)
+        else:
+            plt.plot(costs_dict[name_cost], "o", label=name_cost, markersize=3)
     plt.xlabel("Nodes")
     plt.ylabel("Cost (log)")
     plt.legend()

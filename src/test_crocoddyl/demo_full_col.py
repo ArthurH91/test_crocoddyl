@@ -7,11 +7,13 @@ import argparse
 from wrapper_robot import RobotWrapper
 from wrapper_meshcat import MeshcatWrapper
 
-from ocp_pair_collision import OCPPandaReachingCol
+from ocp_full_col import OCPPandaReachingCol
 
 from scenario import chose_scenario
 from utils import BLUE
 from utils_plot import plot_costs, display_with_col
+
+
 ### PARSERS
 parser = argparse.ArgumentParser(description="Parser to select the scenario.")
 
@@ -20,7 +22,6 @@ parser_group.add_argument("-bigb", action="store_const", const="big_ball", dest=
 parser_group.add_argument("-smallb", action="store_const", const="small_ball", dest="scenario", help="Set up the scenario to the small ball one.")
 parser_group.add_argument("-bigw", action="store_const", const="big_wall", dest="scenario", help="Set up the scenario to the big wall one.")
 parser_group.add_argument("-smallw", action="store_const", const="small_wall", dest="scenario", help="Set up the scenario to the small wall one.")
-parser_group.add_argument("-smallwf", action="store_const", const="small_wall_floor", dest="scenario", help="Set up the scenario to the small wall one.")
 parser_group.add_argument("-debug", action="store_const", const="debug", dest="scenario", help="Set up the debug scenario")
 
 args = parser.parse_args()
@@ -28,7 +29,7 @@ args = parser.parse_args()
 scenario = args.scenario
 
 if scenario is None:
-    scenario = "small_ball_sliding"
+    scenario = "small_wall_floor"
 print(f"Scenario : {scenario}")
 
 ### HYPERPARMS
