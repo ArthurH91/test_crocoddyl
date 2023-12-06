@@ -102,7 +102,7 @@ problem = OCPPandaReachingCol(
 ddp = problem()
 # Solving the problem
 xs_ws = [np.array(x) for x in Q_WS]
-ddp.solve(xs_ws)
+ddp.solve()
 
 log = ddp.getCallbacks()[0]
 

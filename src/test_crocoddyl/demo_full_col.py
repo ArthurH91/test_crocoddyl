@@ -9,8 +9,8 @@ from wrapper_meshcat import MeshcatWrapper
 
 from ocp_full_col import OCPPandaReachingCol
 
-from scenario import chose_scenario
-from utils import BLUE
+from scenario_full_col import chose_scenario
+from utils import BLUE, RED, BLACK, GREEN, YELLOW
 from utils_plot import plot_costs, display_with_col
 
 
@@ -29,7 +29,7 @@ args = parser.parse_args()
 scenario = args.scenario
 
 if scenario is None:
-    scenario = "small_wall_floor"
+    scenario = "small_ball"
 print(f"Scenario : {scenario}")
 
 ### HYPERPARMS
@@ -41,6 +41,7 @@ print(f"Scenario : {scenario}")
     WEIGHT_TERM_POS,
     WEIGHT_COL,
     WEIGHT_TERM_COL,
+    WEIGHT_LIMIT, 
     MAXIT,
     TARGET_POSE,
     OBSTACLE_DIM,
@@ -62,7 +63,7 @@ srdf_model_path = model_path + "/panda/demo.srdf"
 
 # Creating the robot
 robot_wrapper = RobotWrapper(
-    urdf_model_path=urdf_model_path, mesh_dir=mesh_dir, srdf_model_path=srdf_model_path
+    urdf_model_path=urdf_model_path, mesh_dir=mesh_dir, srdf_model_path=srdf_model_path, auto_col=True
 )
 rmodel, cmodel, vmodel = robot_wrapper()
 rdata = rmodel.createData()
@@ -88,7 +89,6 @@ OBSTACLE_GEOM_OBJECT = pin.GeometryObject(
     OBSTACLE,
     OBSTACLE_POSE,
 )
-OBSTACLE_GEOM_OBJECT.meshcolor = BLUE
 OBSTACLE_GEOM_OBJECT.meshColor = BLUE
 
 IG_OBSTACLE = cmodel.addGeometryObject(OBSTACLE_GEOM_OBJECT)
@@ -97,6 +97,19 @@ IG_OBSTACLE = cmodel.addGeometryObject(OBSTACLE_GEOM_OBJECT)
 for k in range(16, 23):
     cmodel.addCollisionPair(pin.CollisionPair(k, IG_OBSTACLE))
 cdata = cmodel.createData()
+
+for col in cmodel.collisionPairs:
+    print(f"col.first : = {cmodel.geometryObjects[col.first].name} id = {col.first}")
+    print(f"col.second : = {cmodel.geometryObjects[col.second].name} id = {col.second}")
+
+cmodel.geometryObjects[6].meshColor = BLUE
+
+cmodel.geometryObjects[5].meshColor = YELLOW
+cmodel.geometryObjects[4].meshColor = BLACK
+
+print(cmodel.geometryObjects[10].placement)
+cmodel.geometryObjects[21].meshColor = GREEN
+
 
 ### SOLVING THE OCP
 problem = OCPPandaReachingCol(
@@ -112,6 +125,7 @@ problem = OCPPandaReachingCol(
     WEIGHT_TERM_COL=WEIGHT_TERM_COL,
     WEIGHT_UREG=WEIGHT_UREG,
     WEIGHT_XREG=WEIGHT_XREG,
+    WEIGHT_LIMIT= WEIGHT_LIMIT,
     RUNNING_COST_ENDEFF=RUNNING_COST_ENDEFF
 )
 ddp = problem()

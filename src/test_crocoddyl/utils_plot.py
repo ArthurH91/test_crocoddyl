@@ -46,25 +46,30 @@ def plot_costs(rd):
     plt.xlabel("Nodes")
     plt.ylabel("Cost (log)")
     plt.legend()
-    # plt.yscale("log")
+    plt.yscale("log")
     plt.show()
 
 
 def display_with_col(Q: list, vis, meshcatvis, rmodel, rdata, cmodel, cdata ):
+    obstacle_id = cmodel.getGeometryId("obstacle")
     for i,q in enumerate(Q):
         for k in range(len(cmodel.collisionPairs)):
-            col, w1, w2 = check_collision(rmodel, rdata, cmodel, cdata, q, k, i)
-            if "ok" in col:
-                color = green
-            if "almost" in col:
-                color = yellow
-            if "collision" in col:
-                color = red
-            r1 = 5e-3
-            meshcatvis["cp" + str(k) + str(i)].set_object(g.Sphere(r1), color)
-            T = pin.SE3.Identity()
-            T.translation = w1
-            meshcatvis["cp" + str(k) + str(i)].set_transform(get_transform(T))
+            if obstacle_id == cmodel.collisionPairs[k].first or obstacle_id==cmodel.collisionPairs[k].second:
+                col, w1, w2 = check_collision(rmodel, rdata, cmodel, cdata, q, k, i)
+                if "ok" in col:
+                    color = green
+                if "almost" in col:
+                    color = yellow
+                if "collision" in col:
+                    color = red
+                r1 = 5e-3
+                meshcatvis["cp" + str(k) + str(i)].set_object(g.Sphere(r1), color)
+                T = pin.SE3.Identity()
+                T.translation = w1
+                meshcatvis["cp" + str(k) + str(i)].set_transform(get_transform(T))
+            else:
+                _ = check_collision(rmodel, rdata, cmodel, cdata, q, k, i)
+                
         vis.display(q)
         time.sleep(1e-3)
 
@@ -101,8 +106,12 @@ def check_collision(rmodel, rdata, cmodel, cdata, q, pair_id, i ):
         req,
         res,
     )
-    if d < 0:
-        print(f"collision at the {i}-th step. Between : {cmodel.geometryObjects[shape1_id].name} & {cmodel.geometryObjects[shape2_id].name} Value of distance =  {d}")
+    if d > -1e-2 and d<0:
+        
+        print(f"collision at the {i}-th step. Between : {cmodel.geometryObjects[shape1_id].name} & {cmodel.geometryObjects[shape2_id].name} Value of distance =  {np.round(d,5)}")
+        return("collision", res.w1, res.w2)
+    if d < -1e3:
+        print(f"ACCEPTABLE collision at the {i}-th step. Between : {cmodel.geometryObjects[shape1_id].name} & {cmodel.geometryObjects[shape2_id].name} Value of distance =  {np.round(d,5)}")
         return("collision", res.w1, res.w2)
     elif d <= 0.05 and d >= 0:
         return("almost", res.w1, res.w2)

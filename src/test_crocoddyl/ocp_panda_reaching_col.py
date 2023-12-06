@@ -68,7 +68,7 @@ class OCPPandaReachingCol():
         goalTrackingCost = crocoddyl.CostModelResidual(self._state, framePlacementResidual)
 
         framePlacementResidual = crocoddyl.ResidualModelFrameTranslation(
-    self._state, self._rmodel.getFrameId("panda2_leftfinger"), self._TARGET_POSE.translation
+    self._state, self._rmodel.getFrameId("panda2_hand_tcp"), self._TARGET_POSE.translation
 )
         goalTrackingCost = crocoddyl.CostModelResidual(self._state, framePlacementResidual)
 

@@ -1,9 +1,11 @@
 ## Class heavily inspired by the work of Sebastien Kleff : https://github.com/machines-in-motion/minimal_examples_crocoddyl
 
 from typing import Any
+import sys
 import numpy as np
 import crocoddyl
 import pinocchio as pin
+
 
 from collisionCost import CostModelPairCollision
 
@@ -25,6 +27,7 @@ class OCPPandaReachingCol:
         WEIGHT_COL=1e0,
         WEIGHT_TERM_COL=1e-2,
         WEIGHT_TERM_POS=10,
+        WEIGHT_LIMIT = 10,
         RUNNING_COST_ENDEFF = True,
     ) -> None:
         """Creating the class for optimal control problem of a panda robot reaching for a target while taking auto collision into consideration
@@ -51,6 +54,7 @@ class OCPPandaReachingCol:
         self._WEIGHT_COL = WEIGHT_COL
         self._WEIGHT_TERM_COL = WEIGHT_TERM_COL
         self._WEIGHT_TERM_POS = WEIGHT_TERM_POS
+        self._WEIGHT_LIMIT = WEIGHT_LIMIT
         
         # Options
         self._RUNNING_COST_ENDEFF = RUNNING_COST_ENDEFF
@@ -83,7 +87,7 @@ class OCPPandaReachingCol:
         # End effector frame cost
         framePlacementResidual = crocoddyl.ResidualModelFrameTranslation(
             self._state,
-            self._rmodel.getFrameId("panda2_leftfinger"),
+            self._rmodel.getFrameId("panda2_hand_tcp"),
             self._TARGET_POSE.translation,
         )
         
@@ -109,6 +113,29 @@ class OCPPandaReachingCol:
                 "col_term_" + str(k), colcost, self._WEIGHT_TERM_COL
             )
 
+
+        # Bounds costs
+        
+                # Cost for self-collision
+        maxfloat = sys.float_info.max
+        xlb = np.concatenate(
+            [
+                self._rmodel.lowerPositionLimit,
+                -maxfloat * np.ones(self._state.nv),
+            ]
+        )
+        xub = np.concatenate(
+            [
+                self._rmodel.upperPositionLimit,
+                maxfloat * np.ones(self._state.nv),
+            ]
+        )
+        bounds = crocoddyl.ActivationBounds(xlb, xub, 1.0)
+        xLimitResidual = crocoddyl.ResidualModelState(self._state, self._x0, self._actuation.nu)
+        xLimitActivation = crocoddyl.ActivationModelQuadraticBarrier(bounds)
+        limitCost = crocoddyl.CostModelResidual(self._state, xLimitActivation, xLimitResidual)
+        
+        
         # Adding costs to the models
         self._runningCostModel.addCost("stateReg", xRegCost, self._WEIGHT_xREG)
         self._runningCostModel.addCost("ctrlRegGrav", uRegCost, self._WEIGHT_uREG)
@@ -116,10 +143,14 @@ class OCPPandaReachingCol:
             self._runningCostModel.addCost(
                 "gripperPoseRM", goalTrackingCost, self._WEIGHT_TERM_POS
             )
-        self._terminalCostModel.addCost("stateReg", xRegCost, 1e-1)
+        self._runningCostModel.addCost("limitCost", limitCost, self._WEIGHT_LIMIT)
+            
+        self._terminalCostModel.addCost("stateReg", xRegCost, self._WEIGHT_xREG)
         self._terminalCostModel.addCost(
             "gripperPose", goalTrackingCost, self._WEIGHT_TERM_POS
         )
+        self._terminalCostModel.addCost("limitCost", limitCost, self._WEIGHT_LIMIT)
+
 
         # Create Differential Action Model (DAM), i.e. continuous dynamics and cost functions
         self._running_DAM = crocoddyl.DifferentialActionModelFreeFwdDynamics(

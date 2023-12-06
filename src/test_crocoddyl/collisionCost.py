@@ -42,7 +42,6 @@ class CostModelPairCollision(crocoddyl.CostModelAbstract):
 
         ### Computes the distance for the collision pair pair_id
         # Updating the position of the joints & the geometry objects.
-        pin.framesForwardKinematics(self.pinocchio, data.shared.pinocchio, self.q)
         pin.updateGeometryPlacements(
             self.pinocchio,
             data.shared.pinocchio,
@@ -113,42 +112,12 @@ class CostModelPairCollision(crocoddyl.CostModelAbstract):
 
         ### Computes the distance for the collision pair pair_id
         # Updating the position of the joints & the geometry objects.
-        pin.framesForwardKinematics(self.pinocchio, data.shared.pinocchio, self.q)
         pin.updateGeometryPlacements(
             self.pinocchio,
             data.shared.pinocchio,
             self.geom_model,
             self.geom_data,
             self.q,
-        )
-
-        # Distance Request & Result from hppfcl / pydiffcol
-        self.req, self.req_diff = select_strategy("first_order_gaussian")
-        self.res = pydiffcol.DistanceResult()
-        self.res_diff = pydiffcol.DerivativeResult()
-
-        # Getting the ID of the first shape from the collision pair id
-        self.shape1_id = self.geom_model.collisionPairs[self.pair_id].first
-
-        # Getting its geometry
-        self.shape1_geom = self.geom_model.geometryObjects[self.shape1_id].geometry
-
-        # Getting its pose
-        self.shape1_placement = self.geom_data.oMg[self.shape1_id]
-
-        # Doing the same for the second shape.
-        self.shape2_id = self.geom_model.collisionPairs[self.pair_id].second
-        self.shape2_geom = self.geom_model.geometryObjects[self.shape2_id].geometry
-        self.shape2_placement = self.geom_data.oMg[self.shape2_id]
-
-        # Computing the distance
-        data.d = pydiffcol.distance(
-            self.shape1_geom,
-            self.shape1_placement,
-            self.shape2_geom,
-            self.shape2_placement,
-            self.req,
-            self.res,
         )
 
         #! calcDiff of activation ?
@@ -181,8 +150,7 @@ class CostModelPairCollision(crocoddyl.CostModelAbstract):
             )
 
             # The jacobian here is the multiplication of the jacobian of the end effector and the jacobian of the distance between the geometry object and the obstacle
-            J = np.dot(self.res_diff.dw_loc_dM1, jacobian)
-
+            J = np.dot(self.res_diff.dw1_loc_dM1, jacobian)
             # compute the residual derivatives
             data.residual.Rx[:3, :nq] = J
 
