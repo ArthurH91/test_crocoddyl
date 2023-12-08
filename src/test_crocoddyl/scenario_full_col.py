@@ -31,14 +31,15 @@ def chose_scenario(scenario="big_obstacle"):
         T = 500
 
         # Weights in the solver
-        WEIGHT_XREG = 1e-3
+        WEIGHT_XREG = 1e-1
         WEIGHT_UREG = 1e-3
         WEIGHT_TERM_POS = 100
-        WEIGHT_COL = 1
-        WEIGHT_TERM_COL = 1
+        WEIGHT_COL = 5
+        WEIGHT_TERM_COL = 5
+        WEIGHT_LIMIT = 5
 
         # Number max of iterations in the solver
-        MAXIT = 100
+        MAXIT = 200
 
         # Target pose
         TARGET = np.array([-0.05, 0.0, 1.056])
@@ -146,9 +147,10 @@ def chose_scenario(scenario="big_obstacle"):
         # Weights in the solver
         WEIGHT_XREG = 1e-1
         WEIGHT_UREG = 1e-2
-        WEIGHT_TERM_POS = 5e3
-        WEIGHT_COL = 1e10
-        WEIGHT_TERM_COL = 1e10
+        WEIGHT_TERM_POS = 100
+        WEIGHT_COL = 1
+        WEIGHT_TERM_COL = 1
+        WEIGHT_LIMIT = 1
 
         # Number max of iterations in the solver
         MAXIT = 100
@@ -163,7 +165,7 @@ def chose_scenario(scenario="big_obstacle"):
         OBSTACLE_DIM = 1e-1
         OBSTACLE = hppfcl.Sphere(OBSTACLE_DIM)
         OBSTACLE_POSE = pin.SE3.Identity()
-        OBSTACLE_POSE.translation = np.array([0.1, -0.4, 1.2])
+        OBSTACLE_POSE.translation = np.array([0.1, -0.5, 1.2])
 
         INITIAL_CONFIG = np.array([0, 0, 0, 0, 0, 0, 0])
         RUNNING_COST_ENDEFF = True
@@ -175,9 +177,10 @@ def chose_scenario(scenario="big_obstacle"):
         # Weights in the solver
         WEIGHT_XREG = 1e-1
         WEIGHT_UREG = 1e-3
-        WEIGHT_TERM_POS = 15
-        WEIGHT_COL = 1
-        WEIGHT_TERM_COL = 1
+        WEIGHT_TERM_POS = 25
+        WEIGHT_COL = 2
+        WEIGHT_TERM_COL = 2
+        WEIGHT_LIMIT = 1
 
         # Number max of iterations in the solver
         MAXIT = 100
@@ -195,8 +198,8 @@ def chose_scenario(scenario="big_obstacle"):
         OBSTACLE_POSE.translation = np.array([0.15, 0.307, 1.2])
 
         INITIAL_CONFIG = np.array([0.5, 0.5, 0, 0, 0, 0, 0])
-        # INITIAL_CONFIG = np.array([0, 0, 0, 0, 0, 0, 0])      
-        INITIAL_CONFIG = np.array([0.5,0.5,0,0,0,0.5,0])
+        INITIAL_CONFIG = np.array([0, 0, 0, 0, 0, 0, 0])      
+        # INITIAL_CONFIG = np.array([0.5,0.5,0,0,0,0.5,0])
 
         RUNNING_COST_ENDEFF = True
         print(

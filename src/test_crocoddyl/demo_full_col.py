@@ -29,7 +29,7 @@ args = parser.parse_args()
 scenario = args.scenario
 
 if scenario is None:
-    scenario = "small_ball"
+    scenario = "small_ball_sliding"
 print(f"Scenario : {scenario}")
 
 ### HYPERPARMS

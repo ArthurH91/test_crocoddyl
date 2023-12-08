@@ -106,12 +106,8 @@ def check_collision(rmodel, rdata, cmodel, cdata, q, pair_id, i ):
         req,
         res,
     )
-    if d > -1e-2 and d<0:
-        
+    if d<0:
         print(f"collision at the {i}-th step. Between : {cmodel.geometryObjects[shape1_id].name} & {cmodel.geometryObjects[shape2_id].name} Value of distance =  {np.round(d,5)}")
-        return("collision", res.w1, res.w2)
-    if d < -1e3:
-        print(f"ACCEPTABLE collision at the {i}-th step. Between : {cmodel.geometryObjects[shape1_id].name} & {cmodel.geometryObjects[shape2_id].name} Value of distance =  {np.round(d,5)}")
         return("collision", res.w1, res.w2)
     elif d <= 0.05 and d >= 0:
         return("almost", res.w1, res.w2)

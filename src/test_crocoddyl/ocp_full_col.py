@@ -7,7 +7,7 @@ import crocoddyl
 import pinocchio as pin
 
 
-from collisionCost import CostModelPairCollision
+from collisionCost_new_formulation import CostModelPairCollision
 
 
 class OCPPandaReachingCol:

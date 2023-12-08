@@ -4,8 +4,10 @@ from typing import Any
 import numpy as np
 import crocoddyl
 import pinocchio as pin
+import mim_solvers
 
-from collisionCost import CostModelPairCollision
+
+from collisionCost_new_formulation import CostModelPairCollision
 
 
 class OCPPandaReachingCol:
@@ -145,4 +147,10 @@ class OCPPandaReachingCol:
 
         ddp.setCallbacks([crocoddyl.CallbackLogger(), crocoddyl.CallbackVerbose()])
 
+# Define solver
+        # ddp = mim_solvers.SolverSQP(problem)
+        # ddp.use_filter_line_search = False
+        # ddp.setCallbacks([crocoddyl.CallbackLogger(), crocoddyl.CallbackVerbose()])
+        # ddp.termination_tolerance = 1e-4
+        # ddp.with_callbacks = True 
         return ddp

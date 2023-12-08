@@ -7,8 +7,8 @@ import pinocchio as pin
 
 from wrapper_meshcat import MeshcatWrapper
 from wrapper_robot import RobotWrapper
-from ocp_pair_collision import OCPPandaReachingCol
-from scenario import chose_scenario
+from ocp_full_col import OCPPandaReachingCol
+from scenario_full_col import chose_scenario
 
 from utils import get_transform, BLUE
 from utils_plot import display_with_col
@@ -40,6 +40,7 @@ N_OBSTACLES = args.nobstacle
     WEIGHT_TERM_POS,
     WEIGHT_COL,
     WEIGHT_TERM_COL,
+    WEIGHT_LIMIT,
     MAXIT,
     TARGET_POSE,
     OBSTACLE_DIM,
@@ -47,7 +48,8 @@ N_OBSTACLES = args.nobstacle
     OBSTACLE_POSE,
     INITIAL_CONFIG,
     DT,
-    RUNNING_COST_ENDEFF
+    RUNNING_COST_ENDEFF,
+    
 ) = chose_scenario("small_ball_sliding")
 
 
@@ -61,7 +63,7 @@ srdf_model_path = model_path + "/panda/demo.srdf"
 
 ###* Creating the robot
 robot_wrapper = RobotWrapper(
-    urdf_model_path=urdf_model_path, mesh_dir=mesh_dir, srdf_model_path=srdf_model_path
+    urdf_model_path=urdf_model_path, mesh_dir=mesh_dir, srdf_model_path=srdf_model_path, auto_col=True
 )
 rmodel, cmodel, vmodel = robot_wrapper()
 rdata = rmodel.createData()
@@ -71,7 +73,7 @@ rdata = rmodel.createData()
 
 start = 0
 stop = 0.6
-step = 0.025
+step = 0.005
 theta_list = np.arange(start,stop, step)
 
 #Initial X0
@@ -131,6 +133,7 @@ for k, theta in enumerate(theta_list):
         WEIGHT_TERM_COL=WEIGHT_TERM_COL,
         WEIGHT_UREG=WEIGHT_UREG,
         WEIGHT_XREG=WEIGHT_XREG,
+        WEIGHT_LIMIT= WEIGHT_LIMIT,
         RUNNING_COST_ENDEFF= RUNNING_COST_ENDEFF
     )
     ddp = problem()
@@ -160,6 +163,7 @@ for k, theta in enumerate(theta_list):
         WEIGHT_TERM_COL=WEIGHT_TERM_COL,
         WEIGHT_UREG=WEIGHT_UREG,
         WEIGHT_XREG=WEIGHT_XREG,
+        WEIGHT_LIMIT=WEIGHT_LIMIT,
         RUNNING_COST_ENDEFF=RUNNING_COST_ENDEFF
     )
     ddp = problem()

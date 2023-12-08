@@ -93,7 +93,7 @@ OBSTACLE_GEOM_OBJECT.meshColor = BLUE
 IG_OBSTACLE = cmodel.addGeometryObject(OBSTACLE_GEOM_OBJECT)
 
 # Adding the collision pairs to the model
-for k in range(16, 23):
+for k in range(16, 20):
     cmodel.addCollisionPair(pin.CollisionPair(k, IG_OBSTACLE))
 cdata = cmodel.createData()
 

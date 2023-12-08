@@ -86,10 +86,12 @@ class CostModelPairCollision(crocoddyl.CostModelAbstract):
         # Here the residual isn't 0 only when the distance is inferior to 0.
         # The residual is equal to the vector separating the 2 closest points of the 2 shapes.
 
-        if self.res.min_distance <= 0:
+        self._eps = 5e-3
+        
+        if self.res.min_distance <= 2 * self._eps:
             
             # print(f"collision pair : { self.geom_model.geometryObjects[self.shape1_id].name} & {self.geom_model.geometryObjects[self.shape2_id].name}")
-            data.residual.r[:] = - self.res.w
+            data.residual.r[:] = self.res.w - 2 * self._eps * self.res.n
 
             #! calc of the activation ?
             self.activation.calc(data.activation, data.residual.r)
@@ -124,7 +126,7 @@ class CostModelPairCollision(crocoddyl.CostModelAbstract):
         self.activation.calcDiff(data.activation, data.residual.r)
 
         # Here the derivative of the residual & cost are computed only when the distance is inferior to 0.
-        if self.res.min_distance <= 0:
+        if self.res.min_distance <= 2 * self._eps:
             # Computing the pinocchio jacobians
             pin.computeJointJacobians(self.pinocchio, data.shared.pinocchio, self.q)
 
@@ -150,7 +152,7 @@ class CostModelPairCollision(crocoddyl.CostModelAbstract):
             )
 
             # The jacobian here is the multiplication of the jacobian of the end effector and the jacobian of the distance between the geometry object and the obstacle
-            J = np.dot(self.res_diff.dw1_loc_dM1, jacobian)
+            J = np.dot(self.res_diff.dw1_loc_dM1, jacobian) - 2 * self._eps * np.dot(self.res_diff.dn_loc_dM1, jacobian) 
             # compute the residual derivatives
             data.residual.Rx[:3, :nq] = J
 
