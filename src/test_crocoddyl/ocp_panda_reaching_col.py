@@ -4,6 +4,7 @@ from typing import Any
 import numpy as np
 import crocoddyl
 import pinocchio as pin
+import mim_solvers
 
 class OCPPandaReachingCol():
     """This class is creating a optimal control problem of a panda robot reaching for a target while taking auto collisions into consideration
@@ -62,35 +63,57 @@ class OCPPandaReachingCol():
 
     
         # End effector frame cost
-        framePlacementResidual = crocoddyl.ResidualModelFramePlacement(
-    self._state, self._rmodel.getFrameId("panda2_leftfinger"), self._TARGET_POSE
-)
-        goalTrackingCost = crocoddyl.CostModelResidual(self._state, framePlacementResidual)
-
         framePlacementResidual = crocoddyl.ResidualModelFrameTranslation(
-    self._state, self._rmodel.getFrameId("panda2_hand_tcp"), self._TARGET_POSE.translation
+    self._state, self._rmodel.getFrameId("panda2_leftfinger"), self._TARGET_POSE.translation
 )
         goalTrackingCost = crocoddyl.CostModelResidual(self._state, framePlacementResidual)
 
 
         # Collision costs
-        collision_radius = 0.2
-        activationCollision = crocoddyl.ActivationModel2NormBarrier(3, collision_radius)
+        # collision_radius = 0.2
+        # activationCollision = crocoddyl.ActivationModel2NormBarrier(3, collision_radius)
         
+        # for k in range(len(self._cmodel.collisionPairs)):
+        #     print(self._cmodel.geometryObjects[self._cmodel.collisionPairs[k].first].name,self._cmodel.geometryObjects[self._cmodel.collisionPairs[k].second].name)
+        #     residualCollision = crocoddyl.ResidualModelPairCollision(self._state, self._rmodel.nq, self._cmodel, k, 7)
+        #     costCollision = crocoddyl.CostModelResidual(self._state, activationCollision, residualCollision)
+        #     self._runningCostModel.addCost("collision" + str(k), costCollision, self._WEIGHT_COL)
+        #     self._terminalCostModel.addCost("collision_term"+ str(k), costCollision, self._WEIGHT_COL)
+self._runningConstraintModelManager = crocoddyl.ConstraintModelManager(self._state, self._actuation.nu)
+        self._terminalConstraintModelManager = crocoddyl.ConstraintModelManager(self._state, self._actuation.nu)
+
+
+
+
+        # Collision residuals
         for k in range(len(self._cmodel.collisionPairs)):
-            print(self._cmodel.geometryObjects[self._cmodel.collisionPairs[k].first].name,self._cmodel.geometryObjects[self._cmodel.collisionPairs[k].second].name)
-            residualCollision = crocoddyl.ResidualModelPairCollision(self._state, self._rmodel.nq, self._cmodel, k, 7)
-            costCollision = crocoddyl.CostModelResidual(self._state, activationCollision, residualCollision)
-            self._runningCostModel.addCost("collision" + str(k), costCollision, self._WEIGHT_COL)
-            self._terminalCostModel.addCost("collision_term"+ str(k), costCollision, self._WEIGHT_COL)
+            colres = ResidualCollision(
+                self._state,
+                self._cmodel,
+                self._cdata,
+                k,
+                self._cmodel.geometryObjects[
+                    self._cmodel.collisionPairs[k].first
+                ].parentJoint,
+            )
+            constraint = crocoddyl.ConstraintModelResidual(
+                self._state,
+                colres,
+                np.array([0,0,0]),
+                np.array([np.inf, np.inf,np.inf]),
+            )
+            
+            self._runningConstraintModelManager.addConstraint("col" + str(k), constraint)
+            self._terminalConstraintModelManager.addConstraint("col_term_" + str(k), constraint)
 
-
-        # Adding costs to the models
+       # Adding costs to the models
         self._runningCostModel.addCost("stateReg", xRegCost, self._WEIGHT_xREG)
-        # self._runningCostModel.addCost("ctrlRegGrav", uRegCost,self._WEIGHT_uREG)
+        self._runningCostModel.addCost("ctrlRegGrav", uRegCost, self._WEIGHT_uREG)
         self._runningCostModel.addCost("gripperPoseRM", goalTrackingCost, self._WEIGHT_GRIPPER_POSE)        
-        self._terminalCostModel.addCost("stateReg", xRegCost, 1e-1)
-        self._terminalCostModel.addCost("gripperPose", goalTrackingCost, self._WEIGHT_GRIPPER_POSE)
+        self._terminalCostModel.addCost("stateReg", xRegCost, self._WEIGHT_xREG)
+        self._terminalCostModel.addCost(
+            "gripperPose", goalTrackingCost, self._WEIGHT_GRIPPER_POSE
+        )
         
         # Create Differential Action Model (DAM), i.e. continuous dynamics and cost functions
         self._running_DAM = crocoddyl.DifferentialActionModelFreeFwdDynamics(self._state, self._actuation, self._runningCostModel)
@@ -102,14 +125,22 @@ class OCPPandaReachingCol():
         
         
         # Optionally add armature to take into account actuator's inertia
-        # self._runningModel.differential.armature = np.array([0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.])
-        # self._terminalModel.differential.armature = np.array([0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.])
+        self._runningModel.differential.armature = np.array([0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.])
+        self._terminalModel.differential.armature = np.array([0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.])
         
         problem = crocoddyl.ShootingProblem(self._x0, [self._runningModel] * self._T, self._terminalModel)
         # Create solver + callbacks
-        ddp = crocoddyl.SolverFDDP(problem)
+        # ddp = crocoddyl.SolverFDDP(problem)
         
-        ddp.setCallbacks([crocoddyl.CallbackLogger(),
-                        crocoddyl.CallbackVerbose()])
+        # ddp.setCallbacks([crocoddyl.CallbackLogger(),
+        #                 crocoddyl.CallbackVerbose()])
+        
+        
+        # Define solver
+        ddp = mim_solvers.SolverSQP(problem)
+        ddp.use_filter_line_search = False
+        ddp.termination_tolerance = 1e-4
+        # ddp.max_qp_iters = 10000
+        ddp.with_callbacks = True 
         
         return ddp

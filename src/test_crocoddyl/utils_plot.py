@@ -71,8 +71,8 @@ def display_with_col(Q: list, vis, meshcatvis, rmodel, rdata, cmodel, cdata ):
                 _ = check_collision(rmodel, rdata, cmodel, cdata, q, k, i)
                 
         vis.display(q)
-        time.sleep(1e-3)
-
+        time.sleep(1e-2)
+        input()
 
 def check_collision(rmodel, rdata, cmodel, cdata, q, pair_id, i ):
     pin.framesForwardKinematics(rmodel, rdata, q)

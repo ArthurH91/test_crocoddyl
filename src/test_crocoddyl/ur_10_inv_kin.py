@@ -1,14 +1,14 @@
 import os
 import sys
+from os.path import dirname, join, abspath
 
 import crocoddyl
 import pinocchio as pin
 import numpy as np
 import example_robot_data
 from wrapper_meshcat import MeshcatWrapper
+from wrapper_robot import RobotWrapper
 
-WITHDISPLAY = False
-WITHPLOT = False
 
 # In this example test, we will solve the reaching-goal task with the Talos arm.
 # For that, we use the forward dynamics (with its analytical derivatives)
@@ -16,13 +16,26 @@ WITHPLOT = False
 # Finally, we use an Euler sympletic integration scheme.
 
 # First, let's load the Pinocchio model for the Talos arm.
-robot = example_robot_data.load("ur10")
 
-rmodel = robot.model
-vmodel = robot.visual_model
-cmodel = robot.collision_model
 
-TARGET = pin.SE3(np.eye(3), np.array([0.7, 0.5, 0.4]))
+### LOADING THE ROBOT
+pinocchio_model_dir = join(dirname(dirname(str(abspath(__file__)))), "models")
+model_path = join(pinocchio_model_dir, "franka_description/robots")
+mesh_dir = pinocchio_model_dir
+urdf_filename = "franka2.urdf"
+urdf_model_path = join(join(model_path, "panda"), urdf_filename)
+srdf_model_path = model_path + "/panda/demo.srdf"
+
+# Creating the robot
+robot_wrapper = RobotWrapper(
+    urdf_model_path=urdf_model_path, mesh_dir=mesh_dir, srdf_model_path=srdf_model_path
+)
+rmodel, cmodel, vmodel = robot_wrapper()
+rdata = rmodel.createData()
+cdata = cmodel.createData()
+
+
+TARGET = pin.SE3(np.eye(3), np.array([0.7, 0.5, 1.4]))
 INITIAL_CONFIG = pin.neutral(rmodel)
 
 # Generating the meshcat visualizer
@@ -31,6 +44,7 @@ vis = MeshcatVis.visualize(
     TARGET, robot_model=rmodel, robot_collision_model=cmodel, robot_visual_model=vmodel
 )
 vis = vis[0]
+
 
 # Displaying the initial configuration of the robot
 vis.display(INITIAL_CONFIG)
@@ -48,7 +62,7 @@ terminalCostModel = crocoddyl.CostModelSum(state)
 # # goal-tracking cost, state and control regularization; and one terminal-cost:
 # # goal cost. First, let's create the common cost functions.
 framePlacementResidual = crocoddyl.ResidualModelFramePlacement(
-    state, rmodel.getFrameId("tool0"), TARGET
+    state, rmodel.getFrameId("panda2_leftfinger"), TARGET
 )
 
 
@@ -75,18 +89,16 @@ runningModel = crocoddyl.IntegratedActionModelEuler(
     ),
     dt,
 )
-runningModel.differential.armature = np.array([0.1, 0.1, 0.1, 0.1, 0.1, 0.1])
 terminalModel = crocoddyl.IntegratedActionModelEuler(
     crocoddyl.DifferentialActionModelFreeFwdDynamics(
         state, actuationModel, terminalCostModel
     ),
     0.0,
 )
-terminalModel.differential.armature = np.array([0.1, 0.1, 0.1, 0.1, 0.1, 0.1])
 
 # # For this optimal control problem, we define 1000 knots (or running action
 # # models) plus a terminal knot
-T = 1000
+T = 100
 # q0 = np.array([0.173046, 1., -0.52366, 0., 0., 0.1])
 q0 = INITIAL_CONFIG
 x0 = np.concatenate([q0, pin.utils.zero(rmodel.nv)])
@@ -112,5 +124,5 @@ log = solver.getCallbacks()[0]
 vis.display(INITIAL_CONFIG)
 input()
 for xs in log.xs:
-    vis.display(np.array(xs[:6].tolist()))
+    vis.display(np.array(xs[:7].tolist()))
     input()

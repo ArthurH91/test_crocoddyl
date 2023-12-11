@@ -135,10 +135,10 @@ class RobotWrapper:
             if isinstance(geometry_object.geometry, hppfcl.Cylinder):
                 capsule = pin.GeometryObject(
                 geometry_object.name[:-4] + "capsule" + str(i),
-                geometry_object.parentFrame,
                 geometry_object.parentJoint,
+                geometry_object.parentFrame,
+                geometry_object.placement,
                 hppfcl.Capsule(geometry_object.geometry.radius, geometry_object.geometry.halfLength),
-                geometry_object.placement
                 )
                 capsule.meshColor = RED
                 self._collision_model_reduced.addGeometryObject(capsule)
