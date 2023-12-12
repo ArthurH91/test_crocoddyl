@@ -5,10 +5,11 @@ import time
 import numpy as np
 import pinocchio as pin
 import hppfcl
+import crocoddyl
 
 from wrapper_meshcat import MeshcatWrapper
 from wrapper_robot import RobotWrapper
-from ocp_panda_reaching_col import OCPPandaReachingCol
+from ocp_panda_reaching_single_col_with_bounds import OCPPandaReachingCol
 
 from utils import BLUE, YELLOW
 
@@ -23,8 +24,14 @@ parser.add_argument(
 args = parser.parse_args()
 
 ###* OPTIONS
+WEIGHT_GRIPPER_POSE=3e3
+WEIGHT_COL=1e7
+WEIGHT_xREG=5e-2
+WEIGHT_uREG=1e-4
+WEIGHT_LIMIT=1
+
 WITH_DISPLAY = args.display
-T = 100
+T = 10
 
 dt = 1/T
 
@@ -45,7 +52,7 @@ rdata = rmodel.createData()
 
 ### CREATING THE TARGET
 TARGET_POSE = pin.SE3(pin.utils.rotate("x", np.pi), np.array([0, 0, 1.55]))
-TARGET_POSE.translation = np.array([0, -0.4,1.5])
+TARGET_POSE.translation = np.array([0, 0.,1.5])
 
 ### INITIAL CONFIG OF THE ROBOT
 INITIAL_CONFIG = pin.neutral(rmodel)
@@ -55,7 +62,7 @@ OBSTACLE_RADIUS = 8e-2
 
 OBSTACLE = hppfcl.Sphere(OBSTACLE_RADIUS)
 OBSTACLE_POSE = pin.SE3.Identity()
-OBSTACLE_POSE.translation = np.array([0.25, -0.45, 1.5])
+OBSTACLE_POSE.translation = np.array([0.25, -0.2, 1.5])
 
 
 OBSTACLE_GEOM_OBJECT = pin.GeometryObject(
@@ -100,14 +107,18 @@ problem = OCPPandaReachingCol(
     T,
     dt,
     x0,
-    WEIGHT_GRIPPER_POSE=100,
-    WEIGHT_COL=1e6,
-    WEIGHT_xREG=1e-2,
-    WEIGHT_uREG=1e-3,
+    WEIGHT_GRIPPER_POSE=WEIGHT_GRIPPER_POSE,
+    WEIGHT_COL=WEIGHT_COL,
+    WEIGHT_xREG=WEIGHT_xREG,
+    WEIGHT_uREG=WEIGHT_uREG,
+    WEIGHT_LIMIT=WEIGHT_LIMIT
 )
 ddp = problem()
 # Solving the problem
-ddp.solve()
+XS_init = [x0] * (T+1)
+US_init = [np.zeros(rmodel.nv)] * T 
+US_init = ddp.problem.quasiStatic(XS_init[:-1])
+ddp.solve(XS_init, US_init)
 
 print("End of the computation, press enter to display the traj if requested.")
 ### DISPLAYING THE TRAJ

@@ -8,9 +8,9 @@ import hppfcl
 
 from wrapper_meshcat import MeshcatWrapper
 from wrapper_robot import RobotWrapper
-from ocp_panda_reaching_col import OCPPandaReachingCol
+from ocp_panda_reaching_single_col_with_bounds import OCPPandaReachingCol
 
-from utils import BLUE, YELLOW
+from utils import BLUE, YELLOW, get_transform
 
 ###* PARSERS
 parser = argparse.ArgumentParser()
@@ -23,10 +23,16 @@ parser.add_argument(
 args = parser.parse_args()
 
 ###* OPTIONS
-WITH_DISPLAY = args.display
+WEIGHT_GRIPPER_POSE = 3e3
+WEIGHT_COL = 1e7
+WEIGHT_xREG = 5e-2
+WEIGHT_uREG = 1e-4
+WEIGHT_LIMIT = 1
+
+WITH_DISPLAY = True
 T = 100
 
-dt = 1/T
+dt = 1 / T
 
 ### LOADING THE ROBOT
 pinocchio_model_dir = join(dirname(dirname(str(abspath(__file__)))), "models")
@@ -45,7 +51,7 @@ rdata = rmodel.createData()
 
 ### CREATING THE TARGET
 TARGET_POSE = pin.SE3(pin.utils.rotate("x", np.pi), np.array([0, 0, 1.55]))
-TARGET_POSE.translation = np.array([0, -0.4,1.5])
+TARGET_POSE.translation = np.array([0, 0.0, 1.5])
 
 ### INITIAL CONFIG OF THE ROBOT
 INITIAL_CONFIG = pin.neutral(rmodel)
@@ -55,7 +61,7 @@ OBSTACLE_RADIUS = 8e-2
 
 OBSTACLE = hppfcl.Sphere(OBSTACLE_RADIUS)
 OBSTACLE_POSE = pin.SE3.Identity()
-OBSTACLE_POSE.translation = np.array([0.25, -0.45, 1.5])
+OBSTACLE_POSE.translation = np.array([0.25, -0.2, 1.5])
 
 
 OBSTACLE_GEOM_OBJECT = pin.GeometryObject(
@@ -78,13 +84,15 @@ cdata = cmodel.createData()
 # Generating the meshcat visualizer
 if WITH_DISPLAY:
     MeshcatVis = MeshcatWrapper()
-    vis = MeshcatVis.visualize(
+    vis, meshcatvis = MeshcatVis.visualize(
         TARGET_POSE,
+        OBSTACLE_POSE,
         robot_model=rmodel,
         robot_collision_model=cmodel,
         robot_visual_model=vmodel,
+        obstacle_type="sphere",
+        OBSTACLE_DIM=OBSTACLE_RADIUS,
     )
-    vis = vis[0]
     # Displaying the initial configuration of the robot
     vis.display(INITIAL_CONFIG)
 
@@ -92,32 +100,52 @@ if WITH_DISPLAY:
 q0 = INITIAL_CONFIG
 x0 = np.concatenate([q0, pin.utils.zero(rmodel.nv)])
 
-### CREATING THE PROBLEM
-problem = OCPPandaReachingCol(
-    rmodel,
-    cmodel,
-    TARGET_POSE,
-    T,
-    dt,
-    x0,
-    WEIGHT_GRIPPER_POSE=100,
-    WEIGHT_COL=1e6,
-    WEIGHT_xREG=1e-2,
-    WEIGHT_uREG=1e-3,
-)
-ddp = problem()
-# Solving the problem
-ddp.solve()
+start = 0
+stop = 1
+step = 0.5
+theta_list = np.arange(start, stop, step)
 
-print("End of the computation, press enter to display the traj if requested.")
-### DISPLAYING THE TRAJ
-Q = []
+results = {}
+
+for k, theta in enumerate(theta_list):
+    
+    print(f"#################################################### ITERATION n°{k} out of {len(theta_list)-1}####################################################")
+    print(f"theta = {round(theta,3)} , step = {round(theta_list[0]-theta_list[1], 3)}, theta min = {round(theta_list[0],3)}, theta max = {round(theta_list[-1],3)} ")
+    
+    
+    cmodel.geometryObjects[cmodel.getGeometryId("obstacle")].placement.translation += np.array(
+        [0, theta, 0]
+    )
+    ### CREATING THE PROBLEM
+    problem = OCPPandaReachingCol(
+        rmodel,
+        cmodel,
+        TARGET_POSE,
+        T,
+        dt,
+        x0,
+        WEIGHT_GRIPPER_POSE=WEIGHT_GRIPPER_POSE,
+        WEIGHT_COL=WEIGHT_COL,
+        WEIGHT_xREG=WEIGHT_xREG,
+        WEIGHT_uREG=WEIGHT_uREG,
+        WEIGHT_LIMIT=WEIGHT_LIMIT,
+    )
+    ddp = problem()
+    # Solving the problem
+    ddp.solve()
+
+    results[str(theta)] = ddp.xs.tolist()
+
+# ### DISPLAYING THE TRAJ
 while True:
-    vis.display(INITIAL_CONFIG)
-    input()
-    for xs in ddp.xs:
-        vis.display(np.array(xs[:7].tolist()))
-        Q.append(xs[:7].tolist())
-        # time.sleep(1e-)
-        input()
+    for k in range(len(theta_list)):
+        OBSTACLE_POSE.translation += np.array(
+        [0, theta_list[k], 0]
+        )
+        print(OBSTACLE_POSE)
+        meshcatvis["obstacle"].set_transform(get_transform(OBSTACLE_POSE))
+
+        for xs in results[str(theta_list[k])]:
+            vis.display(np.array(xs[:7]))
+            input()
     print("replay?")

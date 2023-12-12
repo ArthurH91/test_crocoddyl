@@ -1,56 +1,33 @@
 from os.path import dirname, join, abspath
-import argparse
-import time 
 
+import hppfcl 
 import numpy as np
 import pinocchio as pin
 
 from wrapper_meshcat import MeshcatWrapper
 from wrapper_robot import RobotWrapper
-from ocp_full_col import OCPPandaReachingCol
-from scenario_full_col import chose_scenario
+from ocp_panda_reaching_col import OCPPandaReachingCol
 
-from utils import get_transform, BLUE
+from utils import get_transform, BLUE, YELLOW
 from utils_plot import display_with_col
 
 
 
-###* PARSERS
-parser = argparse.ArgumentParser()
-
-parser.add_argument(
-    "-n",
-    "--nobstacle",
-    help="number of obstacles in the range (-0.18,0.6) of theta, coefficient modifying the pose of the obstacle",
-    default=20.,
-    type=float,
-)
-
-args = parser.parse_args()
-
-###* OPTIONS
-N_OBSTACLES = args.nobstacle
-
 ### HYPERPARMS
 
-(
-    T,
-    WEIGHT_XREG,
-    WEIGHT_UREG,
-    WEIGHT_TERM_POS,
-    WEIGHT_COL,
-    WEIGHT_TERM_COL,
-    WEIGHT_LIMIT,
-    MAXIT,
-    TARGET_POSE,
-    OBSTACLE_DIM,
-    OBSTACLE,
-    OBSTACLE_POSE,
-    INITIAL_CONFIG,
-    DT,
-    RUNNING_COST_ENDEFF,
-    
-) = chose_scenario("small_ball_sliding")
+T = 100
+WEIGHT_TERM_POS=1
+WEIGHT_COL=10
+WEIGHT_XREG=1e-4
+WEIGHT_UREG=1e-6
+
+
+DT = 1/T
+
+### CREATING THE TARGET
+TARGET_POSE = pin.SE3(pin.utils.rotate("x", np.pi), np.array([0, 0, 1.55]))
+TARGET_POSE.translation = np.array([0, -0.4,1.5])
+
 
 
 ###* LOADING THE ROBOT
@@ -68,11 +45,21 @@ robot_wrapper = RobotWrapper(
 rmodel, cmodel, vmodel = robot_wrapper()
 rdata = rmodel.createData()
 
+### INITIAL CONFIG OF THE ROBOT
+INITIAL_CONFIG = pin.neutral(rmodel)
+
+### ADDING THE OBSTACLE
+OBSTACLE_RADIUS = 8e-2
+
+OBSTACLE = hppfcl.Sphere(OBSTACLE_RADIUS)
+OBSTACLE_POSE = pin.SE3.Identity()
+OBSTACLE_POSE.translation = np.array([0.25, -0.500, 1.5])
+
 ###* DISPLACING THE OBSTACLE THROUGH THETA
 # theta_list = np.arange(-0.4, 0, 0.2 / N_OBSTACLES)
 
 start = 0
-stop = 0.6
+stop = 0.05
 step = 0.005
 theta_list = np.arange(start,stop, step)
 
@@ -87,18 +74,18 @@ OBSTACLE_POSE.translation += np.array([0,start,0])
 
 OBSTACLE_GEOM_OBJECT = pin.GeometryObject(
     "obstacle",
-    rmodel.getFrameId("universe"),
     rmodel.frames[rmodel.getFrameId("universe")].parentJoint,
-    OBSTACLE,
+    rmodel.getFrameId("universe"),
     OBSTACLE_POSE,
-    
+    OBSTACLE,
 )
-OBSTACLE_GEOM_OBJECT.meshcolor = BLUE
-IG_OBSTACLE = cmodel.addGeometryObject(OBSTACLE_GEOM_OBJECT)
+OBSTACLE_GEOM_OBJECT.meshColor = YELLOW
 
-###* ADDING THE COLLISION PAIRS 
-for k in range(16, 23):
-    cmodel.addCollisionPair(pin.CollisionPair(k, IG_OBSTACLE))
+### ADDING THE COLLISION PAIRS TO THE COLLISION MODEL
+IG_OBSTACLE = cmodel.addGeometryObject(OBSTACLE_GEOM_OBJECT)
+end_effector_id = cmodel.getGeometryId("panda2_link5_capsule28")
+cmodel.addCollisionPair(pin.CollisionPair(end_effector_id, IG_OBSTACLE))
+cmodel.geometryObjects[end_effector_id].meshColor = BLUE
 
 cdata = cmodel.createData()
 
@@ -123,27 +110,21 @@ for k, theta in enumerate(theta_list):
     problem = OCPPandaReachingCol(
         rmodel,
         cmodel,
-        cdata,
         TARGET_POSE,
         T,
         DT,
         x0,
-        WEIGHT_TERM_POS=WEIGHT_TERM_POS,
+        WEIGHT_GRIPPER_POSE=WEIGHT_TERM_POS,
         WEIGHT_COL=WEIGHT_COL,
-        WEIGHT_TERM_COL=WEIGHT_TERM_COL,
-        WEIGHT_UREG=WEIGHT_UREG,
-        WEIGHT_XREG=WEIGHT_XREG,
-        WEIGHT_LIMIT= WEIGHT_LIMIT,
-        RUNNING_COST_ENDEFF= RUNNING_COST_ENDEFF
+        WEIGHT_uREG=WEIGHT_UREG,
+        WEIGHT_xREG=WEIGHT_XREG,
     )
     ddp = problem()
     # Solving the problem
     xx = ddp.solve()
 
-    log = ddp.getCallbacks()[0]
-
     Q_sol = []
-    for xs in log.xs:
+    for xs in ddp.xs:
             Q_sol.append(np.array(xs[:7].tolist()))
     list_Q_theta.append(Q_sol)
     
@@ -153,18 +134,14 @@ for k, theta in enumerate(theta_list):
     problem = OCPPandaReachingCol(
         rmodel,
         cmodel,
-        cdata,
         TARGET_POSE,
         T,
         DT,
         x0,
-        WEIGHT_TERM_POS=WEIGHT_TERM_POS,
+        WEIGHT_GRIPPER_POSE=WEIGHT_TERM_POS,
         WEIGHT_COL=WEIGHT_COL,
-        WEIGHT_TERM_COL=WEIGHT_TERM_COL,
-        WEIGHT_UREG=WEIGHT_UREG,
-        WEIGHT_XREG=WEIGHT_XREG,
-        WEIGHT_LIMIT=WEIGHT_LIMIT,
-        RUNNING_COST_ENDEFF=RUNNING_COST_ENDEFF
+        WEIGHT_uREG=WEIGHT_UREG,
+        WEIGHT_xREG=WEIGHT_XREG,
     )
     ddp = problem()
     # Solving the problem
@@ -173,15 +150,14 @@ for k, theta in enumerate(theta_list):
         FIRST_IT = False
     else:
         xx = ddp.solve(X0_WS, U0_WS)
-    log = ddp.getCallbacks()[0]
 
     Q_sol = []
-    for xs in log.xs:
+    for xs in ddp.xs:
             Q_sol.append(np.array(xs[:7].tolist()))
     list_Q_theta_ws.append(Q_sol)
     
-    X0_WS = log.xs
-    U0_WS = log.us
+    X0_WS = ddp.xs
+    U0_WS = ddp.us
 
     print(f"---------------------------------------------------------------------------------------------------------------------------")
 ###* DISPLAYING THE RESULTS IN MESHCAT
@@ -201,7 +177,7 @@ vis, meshcatvis = MeshcatVis.visualize(
     robot_collision_model=cmodel,
     robot_visual_model=vmodel,
     obstacle_type="sphere",
-    OBSTACLE_DIM=OBSTACLE_DIM,
+    OBSTACLE_DIM=OBSTACLE_RADIUS,
 )
 vis.display(INITIAL_CONFIG)
 

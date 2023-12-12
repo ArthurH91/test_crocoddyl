@@ -1,6 +1,7 @@
 ## Class heavily inspired by the work of Sebastien Kleff : https://github.com/machines-in-motion/minimal_examples_crocoddyl
 
 from typing import Any
+import sys
 import numpy as np
 import crocoddyl
 import pinocchio as pin
@@ -12,7 +13,7 @@ class OCPPandaReachingCol():
     """This class is creating a optimal control problem of a panda robot reaching for a target while taking auto collisions into consideration
     """
     
-    def __init__(self, rmodel : pin.Model,cmodel : pin.GeometryModel,  TARGET_POSE : pin.SE3, T : int, dt : float,  x0 : np.ndarray, WEIGHT_xREG = 1e-1, WEIGHT_uREG = 1e-4, WEIGHT_COL = 1e0, WEIGHT_GRIPPER_POSE =10) -> None:
+    def __init__(self, rmodel : pin.Model,cmodel : pin.GeometryModel,  TARGET_POSE : pin.SE3, T : int, dt : float,  x0 : np.ndarray, WEIGHT_xREG = 1e-1, WEIGHT_uREG = 1e-4, WEIGHT_COL = 1e0, WEIGHT_GRIPPER_POSE =10, WEIGHT_LIMIT = 1) -> None:
         """Creating the class for optimal control problem of a panda robot reaching for a target while taking auto collision into consideration
 
         Args:
@@ -35,6 +36,7 @@ class OCPPandaReachingCol():
         self._WEIGHT_uREG = WEIGHT_uREG
         self._WEIGHT_COL = WEIGHT_COL
         self._WEIGHT_GRIPPER_POSE = WEIGHT_GRIPPER_POSE
+        self._WEIGHT_LIMIT = WEIGHT_LIMIT
         
         # Data models
         self._rdata = rmodel.createData()
@@ -89,7 +91,7 @@ class OCPPandaReachingCol():
 
     # Collision residuals
         for k in range(len(self._cmodel.collisionPairs)):
-        #     # print(f"name : self._cmodel.collisionPairs[k].first : {self._cmodel.geometryObjects[self._cmodel.collisionPairs[k].first].name}, self._cmodel.collisionPairs[k].second : {self._cmodel.collisionPairs[k].second}")
+            # print(f"name : self._cmodel.collisionPairs[k].first : {self._cmodel.geometryObjects[self._cmodel.collisionPairs[k].first].name}, self._cmodel.collisionPairs[k].second : {self._cmodel.collisionPairs[k].second}")
             # colres = ResidualCollision(
             #     self._state,
             #     self._cmodel,
@@ -108,6 +110,8 @@ class OCPPandaReachingCol():
             
             # self._runningConstraintModelManager.addConstraint("col", constraint)
             # self._terminalConstraintModelManager.addConstraint("col_term", constraint)
+            
+            
             colcost = CostModelPairCollision(
                 self._state,
                 self._cmodel,
@@ -131,7 +135,30 @@ class OCPPandaReachingCol():
         self._terminalCostModel.addCost(
             "gripperPose", goalTrackingCost, self._WEIGHT_GRIPPER_POSE
         )
+         # Bounds costs
         
+                # Cost for self-collision
+        maxfloat = sys.float_info.max
+        xlb = np.concatenate(
+            [
+                self._rmodel.lowerPositionLimit,
+                -maxfloat * np.ones(self._state.nv),
+            ]
+        )
+        xub = np.concatenate(
+            [
+                self._rmodel.upperPositionLimit,
+                maxfloat * np.ones(self._state.nv),
+            ]
+        )
+        bounds = crocoddyl.ActivationBounds(xlb, xub, 1.0)
+        xLimitResidual = crocoddyl.ResidualModelState(self._state, self._x0, self._actuation.nu)
+        xLimitActivation = crocoddyl.ActivationModelQuadraticBarrier(bounds)
+        limitCost = crocoddyl.CostModelResidual(self._state, xLimitActivation, xLimitResidual)
+        
+        self._runningCostModel.addCost("limitCost", limitCost, self._WEIGHT_LIMIT)  
+        self._terminalCostModel.addCost("limitCost", limitCost, self._WEIGHT_LIMIT)
+
         # Create Differential Action Model (DAM), i.e. continuous dynamics and cost functions
         self._running_DAM = crocoddyl.DifferentialActionModelFreeFwdDynamics(self._state, self._actuation, self._runningCostModel, self._runningConstraintModelManager)
         self._terminal_DAM = crocoddyl.DifferentialActionModelFreeFwdDynamics(self._state, self._actuation, self._terminalCostModel, self._terminalConstraintModelManager)
@@ -159,18 +186,18 @@ class OCPPandaReachingCol():
         
         problem = crocoddyl.ShootingProblem(self._x0, [self._runningModel] * self._T, self._terminalModel)
         # Create solver + callbacks
-        ddp = crocoddyl.SolverFDDP(problem)
+        # ddp = crocoddyl.SolverFDDP(problem)
         
-        ddp.setCallbacks([crocoddyl.CallbackLogger(),
-                        crocoddyl.CallbackVerbose()])
+        # ddp.setCallbacks([crocoddyl.CallbackLogger(),
+        #                 crocoddyl.CallbackVerbose()])
         
         
         # Define solver
-        # ddp = mim_solvers.SolverCSQP(problem)
+        ddp = mim_solvers.SolverSQP(problem)
         # ddp = mim_solvers.SolverSQP(problem)
-        # ddp.use_filter_line_search = False
-        # ddp.termination_tolerance = 1e-4
-        # ddp.max_qp_iters = 10000
-        # ddp.with_callbacks = True 
+        ddp.use_filter_line_search = True
+        ddp.termination_tolerance = 1e-10
+        ddp.max_qp_iters = 10000
+        ddp.with_callbacks = True 
         
         return ddp

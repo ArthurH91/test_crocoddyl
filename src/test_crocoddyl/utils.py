@@ -5,11 +5,11 @@ import time
 import copy
 import matplotlib.pyplot as plt
 from typing import Tuple
-try:
-    import pydiffcol
-except ImportError:
-    print('Pydiffcol not implemented') 
+import pydiffcol
+import meshcat
 
+import meshcat.geometry as g
+import meshcat.transformations as tf
 
 RED = np.array([249, 136, 126, 125]) / 255
 RED_FULL = np.array([249, 136, 126, 255]) / 255
@@ -558,7 +558,30 @@ def check_auto_collisions(rmodel : pin.Model, rdata : pin.Data, cmodel : pin.Geo
     
     return collision_pairs
     
+def rgbToHex(color):
+    if len(color) == 4:
+        c = color[:3]
+        opacity = color[3]
+    else:
+        c = color
+        opacity = 1.0
+    hex_color = "0x%02x%02x%02x" % (int(c[0] * 255), int(c[1] * 255), int(c[2] * 255))
+    return hex_color, opacity
+
+
+def meshcat_material(r, g, b, a):
+    material = meshcat.geometry.MeshPhongMaterial()
+    material.color = int(r * 255) * 256**2 + int(g * 255) * 256 + int(b * 255)
+    material.opacity = a
+    return material
     
+
+# Building the meshcat materials
+red = meshcat_material(RED[0], RED[1], RED[2], RED[3])
+green = meshcat_material(GREEN[0], GREEN[1], GREEN[2], GREEN[3])
+yellow = meshcat_material(YELLOW[0], YELLOW[1], YELLOW[2], YELLOW[3])
+blue = meshcat_material(BLUE[0], BLUE[1], BLUE[2], BLUE[3])
+
     
 if __name__ == "__main__":
     import example_robot_data as robex
