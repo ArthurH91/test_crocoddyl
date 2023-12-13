@@ -7,7 +7,7 @@ import pinocchio as pin
 
 from wrapper_meshcat import MeshcatWrapper
 from wrapper_robot import RobotWrapper
-from ocp_panda_reaching import OCPPandaReachingCol
+from ocp_panda_reaching import OCPPandaReaching
 
 
 ###* PARSERS
@@ -75,7 +75,7 @@ x0 = np.concatenate([q0, pin.utils.zero(rmodel.nv)])
 
 
 ### CREATING THE PROBLEM
-problem = OCPPandaReachingCol(
+problem = OCPPandaReaching(
     rmodel,
     cmodel,
     TARGET_POSE,
@@ -84,7 +84,7 @@ problem = OCPPandaReachingCol(
     x0,
     WEIGHT_GRIPPER_POSE=100,
     WEIGHT_xREG=1e-2,
-    WEIGHT_uREG=0,
+    WEIGHT_uREG=1e-4,
 )
 ddp = problem()
 # Solving the problem

@@ -130,8 +130,9 @@ class OCPPandaReachingCol():
        # Adding costs to the models
         self._runningCostModel.addCost("stateReg", xRegCost, self._WEIGHT_xREG)
         self._runningCostModel.addCost("ctrlRegGrav", uRegCost, self._WEIGHT_uREG)
-        self._runningCostModel.addCost("gripperPoseRM", goalTrackingCost, self._WEIGHT_GRIPPER_POSE)        
-        self._terminalCostModel.addCost("stateReg", xRegCost, self._WEIGHT_xREG)
+        self._runningCostModel.addCost("gripperPoseRM", goalTrackingCost, self._WEIGHT_GRIPPER_POSE)  
+        self._terminalCostModel.addCost("ctrlRegGrav_term", xRegCost, self._WEIGHT_xREG )      
+        self._terminalCostModel.addCost("stateReg_term", xRegCost, self._WEIGHT_xREG)
         self._terminalCostModel.addCost(
             "gripperPose", goalTrackingCost, self._WEIGHT_GRIPPER_POSE
         )

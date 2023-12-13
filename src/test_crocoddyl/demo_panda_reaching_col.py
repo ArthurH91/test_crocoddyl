@@ -24,9 +24,9 @@ args = parser.parse_args()
 
 ###* OPTIONS
 WITH_DISPLAY = args.display
-T = 100
+T = 40
 
-dt = 1/T
+dt = 2/T
 
 ### LOADING THE ROBOT
 pinocchio_model_dir = join(dirname(dirname(str(abspath(__file__)))), "models")
@@ -100,14 +100,17 @@ problem = OCPPandaReachingCol(
     T,
     dt,
     x0,
-    WEIGHT_GRIPPER_POSE=100,
-    WEIGHT_COL=1e6,
-    WEIGHT_xREG=1e-2,
-    WEIGHT_uREG=1e-3,
+    WEIGHT_GRIPPER_POSE=1,
+    WEIGHT_COL=1e4 * 0,
+    WEIGHT_xREG=1e-1,
+    WEIGHT_uREG=1e-4,
 )
 ddp = problem()
 # Solving the problem
-ddp.solve()
+XS_init = [x0] * (T+1)
+US_init = [np.zeros(rmodel.nv)] * T 
+US_init = ddp.problem.quasiStatic(XS_init[:-1])
+ddp.solve(XS_init, US_init, 400)
 
 print("End of the computation, press enter to display the traj if requested.")
 ### DISPLAYING THE TRAJ

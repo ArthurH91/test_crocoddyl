@@ -27,11 +27,15 @@ class ResidualCollision(crocoddyl.ResidualModelAbstract):
         self.geom_data = geom_data
         self._eps = 5e-3
 
-
-    def calc(self, data, x, u=None):
+        self.nq = self.pinocchio.nq 
         
+    def calc(self, data, x, u=None):
+    
+        data.r[:] = self.f(data, x[:self.nq])
+    
+    def f(self, data, q):
         # Storing q outside of the state vector
-        self.q = np.array(x[: self.state.nq])
+        self.q = q
 
         ### Computes the distance for the collision pair pair_id
         # Updating the position of the joints & the geometry objects.
@@ -72,13 +76,17 @@ class ResidualCollision(crocoddyl.ResidualModelAbstract):
             self.req,
             self.res,
         )
-        data.d = distance
+        return distance
         # print(distance)
         # data.r[:] = self.res.w - 2 * self._eps * self.res.n
-        data.r[:] = distance
         
     def calcDiff(self, data, x, u=None):
-        pass
+        fx = self.f(data, x[:self.nq])
+        for i in range(self.nq):
+            e = np.zeros(self.nq)
+            e[i] = 1e-6
+            
+            data.Rx[i] = (self.f(data, x[:self.nq]+e) - fx) / e[i]
     # # Storing nq outside of state.
     #     nq = self.state.nq
 
