@@ -10,7 +10,7 @@ from residualDistanceCollision import ResidualCollision
 
 
 class OCPPandaReachingColWithSingleCol:
-    """This class is creating a optimal control problem of a panda robot reaching for a target while taking auto collisions into consideration"""
+    """This class is creating a optimal control problem of a panda robot reaching for a target while taking a collision between a given previously given shape of the robot and an obstacle into consideration"""
 
     def __init__(
         self,
@@ -25,25 +25,35 @@ class OCPPandaReachingColWithSingleCol:
         WEIGHT_xREG=1e-1,
         WEIGHT_uREG=1e-4,
         WEIGHT_GRIPPER_POSE=10,
+        SAFETY_THRESHOLD=1e-2,
     ) -> None:
-        """Creating the class for optimal control problem of a panda robot reaching for a target while taking auto collision into consideration
+        """Creating the class for optimal control problem of a panda robot reaching for a target while taking a collision between a given previously given shape of the robot and an obstacle into consideration.
 
         Args:
             rmodel (pin.Model): pinocchio Model of the robot
             cmodel (pin.GeometryModel): Collision model of the robot
             TARGET_POSE (pin.SE3): Pose of the target in WOLRD ref
+            OBSTACLE_POSE (pin.SE3): Pose of the obstacle in the universe ref
+            OBSTACLE_RADIUS (float): Radius of the obstacle
             T (int): Number of nodes in the trajectory
-            dt (float): _description_
-            x0 (np.ndarray): _description_
-            WEIGHT_xREG (_type_, optional): _description_. Defaults to 1e-1.
-            WEIGHT_GRIPPER_POSE (int, optional): _description_. Defaults to 10.
+            dt (float): Time step between each node
+            x0 (np.ndarray): Initial state of the problem
+            WEIGHT_xREG (float, optional): State regulation weight. Defaults to 1e-1.
+            WEIGHT_uREG (float, optional): Command regulation weight. Defaults to 1e-4.
+            WEIGHT_GRIPPER_POSE (float, optional): End effector pose weight. Defaults to 10.
+            SAFETY_THRESHOLD (float, optional): Safety threshold of collision avoidance. Defaults to 1e-2.
         """
-
+        # Models of the robot
         self._rmodel = rmodel
         self._cmodel = cmodel
+
+        # Poses & dimensions of the target & obstacle
         self._TARGET_POSE = TARGET_POSE
         self._OBSTACLE_RADIUS = OBSTACLE_RADIUS
         self._OBSTACLE_POSE = OBSTACLE_POSE
+        self._SAFETRY_TRESHOLD = SAFETY_THRESHOLD
+
+        # Params of the problem
         self._T = T
         self._dt = dt
         self._x0 = x0
@@ -56,6 +66,43 @@ class OCPPandaReachingColWithSingleCol:
         # Data models
         self._rdata = rmodel.createData()
         self._cdata = cmodel.createData()
+
+        # Frames
+        self._endeff_frame = self._rmodel.getFrameId("panda2_leftfinger")
+
+        # Making sure that the frame exists
+        assert self._endeff_frame <= len(self._rmodel.frames)
+
+        # Collision pair
+        self._collisionPair = self._cmodel.collisionPairs[0]
+
+        # Geometry ID of the shape 1 of collision pair
+        self._id_shape1 = self._collisionPair.first
+
+        # Making sure that the frame exists
+        assert self._id_shape1 <= len(self._cmodel.geometryObjects)
+
+        # Geometry object shape 1
+        self._shape1 = self._cmodel.geometryObjects[self._id_shape1]
+
+        # Shape 1 parent joint
+        self._shape1_parentJoint = self._shape1.parentJoint
+
+        # Geometry ID of the shape 2 of collision pair
+        self._id_shape2 = self._collisionPair.second
+
+        # Making sure that the frame exists
+        assert self._id_shape2 <= len(self._cmodel.geometryObjects)
+
+        # Geometry object shape 2
+        self._shape2 = self._cmodel.geometryObjects[self._id_shape2]
+
+        # Shape 2 parent joint
+        self._shape2_parentJoint = self._shape2.parentJoint
+
+        # Checking that shape 1 is belonging to the robot & shape 2 is the obstacle
+        assert not "obstacle" in self._shape1.name
+        assert "obstacle" in self._shape2.name
 
     def __call__(self) -> Any:
         "Setting up croccodyl OCP"
@@ -79,41 +126,40 @@ class OCPPandaReachingColWithSingleCol:
         uRegCost = crocoddyl.CostModelResidual(self._state, uResidual)
 
         # End effector frame cost
-
         framePlacementResidual = crocoddyl.ResidualModelFrameTranslation(
             self._state,
-            self._rmodel.getFrameId("panda2_leftfinger"),
+            self._endeff_frame,
             self._TARGET_POSE.translation,
         )
+
         goalTrackingCost = crocoddyl.CostModelResidual(
             self._state, framePlacementResidual
         )
 
-        # Obstacle
+        # Obstacle cost with hard constraint
         self._runningConstraintModelManager = crocoddyl.ConstraintModelManager(
             self._state, self._actuation.nu
         )
         self._terminalConstraintModelManager = crocoddyl.ConstraintModelManager(
             self._state, self._actuation.nu
         )
-        for k in range(len(self._cmodel.collisionPairs)):
-            obstacleDistanceResidual = ResidualCollision(
-                self._state,
-                self._cmodel,
-                self._cdata,
-                k,
-                self._cmodel.geometryObjects[
-                    self._cmodel.collisionPairs[k].first
-                ].parentJoint,
-            )
-            constraint = crocoddyl.ConstraintModelResidual(
-                self._state,
-                obstacleDistanceResidual,
-                np.array([self._OBSTACLE_RADIUS]),
-                np.array([np.inf]),
-            )
-            self._runningConstraintModelManager.addConstraint("col", constraint)
-            self._terminalConstraintModelManager.addConstraint("col_term", constraint)
+        # Creating the residual
+        obstacleDistanceResidual = ResidualCollision(
+            self._state, self._cmodel, self._cdata, 0, self._shape1_parentJoint
+        )
+
+        # Creating the inequality constraint
+        constraint = crocoddyl.ConstraintModelResidual(
+            self._state,
+            obstacleDistanceResidual,
+            np.array([self._SAFETRY_TRESHOLD]),
+            np.array([np.inf]),
+        )
+
+        # Adding the constraint to the constraint manager
+        self._runningConstraintModelManager.addConstraint("col", constraint)
+        self._terminalConstraintModelManager.addConstraint("col_term", constraint)
+
         # Adding costs to the models
         self._runningCostModel.addCost("stateReg", xRegCost, self._WEIGHT_xREG)
         self._runningCostModel.addCost("ctrlRegGrav", uRegCost, self._WEIGHT_uREG)
@@ -138,13 +184,6 @@ class OCPPandaReachingColWithSingleCol:
             self._terminalCostModel,
             self._terminalConstraintModelManager,
         )
-        # self._running_DAM = crocoddyl.DifferentialActionModelNumDiff(
-        #     self._running_DAM, True
-        # )
-       
-        # self._terminal_DAM = crocoddyl.DifferentialActionModelNumDiff(
-        #     self._terminal_DAM, True
-        # )
 
         # Create Integrated Action Model (IAM), i.e. Euler integration of continuous dynamics and cost
         self._runningModel = crocoddyl.IntegratedActionModelEuler(
@@ -160,9 +199,6 @@ class OCPPandaReachingColWithSingleCol:
         self._terminalModel.differential.armature = np.array(
             [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.0]
         )
-        
-
-        
 
         problem = crocoddyl.ShootingProblem(
             self._x0, [self._runningModel] * self._T, self._terminalModel

@@ -129,6 +129,7 @@ problem = OCPPandaReachingColWithSingleCol(
     WEIGHT_GRIPPER_POSE=100,
     WEIGHT_xREG=1e-2,
     WEIGHT_uREG=1e-4,
+    SAFETY_THRESHOLD=1e-2
 )
 ddp = problem()
 
