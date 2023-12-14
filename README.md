@@ -14,7 +14,7 @@ https://github.com/stack-of-tasks/pinocchio
 
 # Usage 
 
-First, create a meshcat server using a terminal and the following command : ```meshcat-server```. Then, ``` python demo_panda_reaching_col.py -d ``` to run the demo. 
+First, create a meshcat server using a terminal and the following command : ```meshcat-server```. Then, ``` python demo_panda_reaching_obs_single_point.py -d ``` to run the demo. 
 
 # Credits
 
