@@ -1,38 +1,84 @@
-from copy import copy
 import numpy as np
 import pinocchio as pin
 import crocoddyl
 from crocoddyl.utils import *
 import pydiffcol
+
 from utils import select_strategy
 
 
 class ResidualCollision(crocoddyl.ResidualModelAbstract):
+    """Class computing the residual of the collision constraint. This residual is simply the signed distance between the two closest points of the 2 shapes."""
+
     def __init__(
-                self,
+        self,
         state,
         geom_model: pin.Model,
         geom_data,
         pair_id: int,
-        joint_id: int,
     ):
-        
-        crocoddyl.ResidualModelAbstract.__init__(self, state, 1, True, True, True)
-        
-        
-        self.pinocchio = self.state.pinocchio
-        self.geom_model = geom_model
-        self.pair_id = pair_id
-        self.joint_id = joint_id
-        self.geom_data = geom_data
-        self._eps = 5e-3
+        """Class computing the residual of the collision constraint. This residual is simply the signed distance between the two closest points of the 2 shapes.
 
-        self.nq = self.pinocchio.nq 
-        
+        Args:
+            state (crocoddyl.StateMultibody): _description_
+            geom_model (pin.Model): Collision model of pinocchio
+            geom_data (_type_): Collision data of the collision model of pinocchio
+            pair_id (int): ID of the collision pair
+        """
+        crocoddyl.ResidualModelAbstract.__init__(self, state, 1, True, True, True)
+
+        # Pinocchio robot model
+        self._pinocchio = self.state.pinocchio
+
+        # Geometry model of the robot
+        self._geom_model = geom_model
+
+        # Geometry data of the robot
+        self._geom_data = geom_data
+
+        # Pair ID of the collisionPair
+        self.pair_id = pair_id
+
+        # Number of joints
+        self.nq = self._pinocchio.nq
+
+        # Making sure that the pair of collision exists
+        assert self.pair_id <= len(self._geom_model.collisionPairs)
+
+        # Collision pair
+        self._collisionPair = self._geom_model.collisionPairs[0]
+
+        # Geometry ID of the shape 1 of collision pair
+        self._shape1_id = self._collisionPair.first
+
+        # Making sure that the frame exists
+        assert self._shape1_id <= len(self._geom_model.geometryObjects)
+
+        # Geometry object shape 1
+        self._shape1 = self._geom_model.geometryObjects[self._shape1_id]
+
+        # Shape 1 parent joint
+        self._shape1_parentJoint = self._shape1.parentJoint
+
+        # Geometry ID of the shape 2 of collision pair
+        self._shape2_id = self._collisionPair.second
+
+        # Making sure that the frame exists
+        assert self._shape2_id <= len(self._geom_model.geometryObjects)
+
+        # Geometry object shape 2
+        self._shape2 = self._geom_model.geometryObjects[self._shape2_id]
+
+        # Shape 2 parent joint
+        self._shape2_parentJoint = self._shape2.parentJoint
+
+        # Checking that shape 1 is belonging to the robot & shape 2 is the obstacle
+        assert not "obstacle" in self._shape1.name
+        assert "obstacle" in self._shape2.name
+
     def calc(self, data, x, u=None):
-    
-        data.r[:] = self.f(data, x[:self.nq])
-    
+        data.r[:] = self.f(data, x[: self.nq])
+
     def f(self, data, q):
         # Storing q outside of the state vector
         self.q = q
@@ -40,53 +86,47 @@ class ResidualCollision(crocoddyl.ResidualModelAbstract):
         ### Computes the distance for the collision pair pair_id
         # Updating the position of the joints & the geometry objects.
         pin.updateGeometryPlacements(
-            self.pinocchio,
+            self._pinocchio,
             data.shared.pinocchio,
-            self.geom_model,
-            self.geom_data,
+            self._geom_model,
+            self._geom_data,
             self.q,
         )
 
         # Distance Request & Result from hppfcl / pydiffcol
-        self.req, self.req_diff = select_strategy("first_order_gaussian")
-        self.res = pydiffcol.DistanceResult()
-        self.res_diff = pydiffcol.DerivativeResult()
+        self._req, self._req_diff = select_strategy("first_order_gaussian")
+        self._res = pydiffcol.DistanceResult()
+        self._res_diff = pydiffcol.DerivativeResult()
 
-        # Getting the ID of the first shape from the collision pair id
-        self.shape1_id = self.geom_model.collisionPairs[self.pair_id].first
+        # Getting the geometry of the shape 1
+        self._shape1_geom = self._shape1.geometry
 
-        # Getting its geometry
-        self.shape1_geom = self.geom_model.geometryObjects[self.shape1_id].geometry
+        # Getting its pose in the world reference
+        self._shape1_placement = self._geom_data.oMg[self._shape1_id]
 
-        # Getting its pose
-        self.shape1_placement = self.geom_data.oMg[self.shape1_id]
-
-        # Parent frame
-        self.parentFrame = self.geom_model.geometryObjects[self.shape1_id].parentFrame
         # Doing the same for the second shape.
-        self.shape2_id = self.geom_model.collisionPairs[self.pair_id].second
-        self.shape2_geom = self.geom_model.geometryObjects[self.shape2_id].geometry
-        self.shape2_placement = self.geom_data.oMg[self.shape2_id]
+        self._shape2_geom = self._shape2.geometry
+        self._shape2_placement = self._geom_data.oMg[self._shape2_id]
+        
         # Computing the distance
         distance = pydiffcol.distance(
-            self.shape1_geom,
-            self.shape1_placement,
-            self.shape2_geom,
-            self.shape2_placement,
-            self.req,
-            self.res,
+            self._shape1_geom,
+            self._shape1_placement,
+            self._shape2_geom,
+            self._shape2_placement,
+            self._req,
+            self._res,
         )
         return distance
-        # print(distance)
-        # data.r[:] = self.res.w - 2 * self._eps * self.res.n
-        
+
     def calcDiff(self, data, x, u=None):
-        fx = self.f(data, x[:self.nq])
+        fx = self.f(data, x[: self.nq])
         for i in range(self.nq):
             e = np.zeros(self.nq)
             e[i] = 1e-6
-            
-            data.Rx[i] = (self.f(data, x[:self.nq]+e) - fx) / e[i]
+
+            data.Rx[i] = (self.f(data, x[: self.nq] + e) - fx) / e[i]
+
     # # Storing nq outside of state.
     #     nq = self.state.nq
 
@@ -128,10 +168,9 @@ class ResidualCollision(crocoddyl.ResidualModelAbstract):
     #     )
 
     #     # The jacobian here is the multiplication of the jacobian of the end effector and the jacobian of the distance between the geometry object and the obstacle
-    #     J = np.dot(self.res_diff.dw1_loc_dM1, jacobian) 
+    #     J = np.dot(self.res_diff.dw1_loc_dM1, jacobian)
     #     # compute the residual derivatives
     #     data.Rx[:3, :nq] = J
-
 
 
 if __name__ == "__main__":

@@ -72,9 +72,15 @@ class OCPPandaReachingColWithSingleCol:
 
         # Making sure that the frame exists
         assert self._endeff_frame <= len(self._rmodel.frames)
+        
+        # Collision pair id
+        k = 0
+        
+        # Making sure that the pair of collision exists
+        assert k <= len(self._cmodel.collisionPairs)
 
         # Collision pair
-        self._collisionPair = self._cmodel.collisionPairs[0]
+        self._collisionPair = self._cmodel.collisionPairs[k]
 
         # Geometry ID of the shape 1 of collision pair
         self._id_shape1 = self._collisionPair.first
@@ -145,7 +151,7 @@ class OCPPandaReachingColWithSingleCol:
         )
         # Creating the residual
         obstacleDistanceResidual = ResidualCollision(
-            self._state, self._cmodel, self._cdata, 0, self._shape1_parentJoint
+            self._state, self._cmodel, self._cdata, 0
         )
 
         # Creating the inequality constraint
@@ -208,13 +214,18 @@ class OCPPandaReachingColWithSingleCol:
 
         # ddp.setCallbacks([crocoddyl.CallbackLogger(), crocoddyl.CallbackVerbose()])
 
-        # Define solver
+        # Define mim solver with inequalities constraints
         ddp = mim_solvers.SolverCSQP(problem)
+        
+        # Merit function
         ddp.use_filter_line_search = True
+        
+        # Parameters of the solver
         ddp.termination_tolerance = 1e-3
         ddp.max_qp_iters = 10000
         ddp.eps_abs = 1e-6
         ddp.eps_rel = 0
+        
         ddp.with_callbacks = True
 
         return ddp

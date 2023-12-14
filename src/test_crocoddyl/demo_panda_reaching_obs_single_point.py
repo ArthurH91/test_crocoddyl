@@ -1,18 +1,17 @@
 from os.path import dirname, join, abspath
 import argparse
 import time
-import meshcat
 import numpy as np
-import pinocchio as pin
 
+import pinocchio as pin
 import hppfcl
+
 from wrapper_meshcat import MeshcatWrapper
 from wrapper_robot import RobotWrapper
 from ocp_panda_reaching import OCPPandaReaching
-
 from ocp_panda_reaching_obs_single_point import OCPPandaReachingColWithSingleCol
 
-from utils import get_transform, BLUE
+from utils import BLUE
 
 ###* PARSERS
 parser = argparse.ArgumentParser()
