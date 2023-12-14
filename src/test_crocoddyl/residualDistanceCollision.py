@@ -162,7 +162,7 @@ class ResidualCollision(crocoddyl.ResidualModelAbstract):
             data.shared.pinocchio,
             self.q,
             self._shape1.parentFrame,
-            pin.LOCAL_WORLD_ALIGNED,
+            pin.LOCAL,
         )
 
         # The jacobian here is the multiplication of the jacobian of the end effector and the jacobian of the distance between the geometry object and the obstacle

@@ -10,7 +10,7 @@ from wrapper_robot import RobotWrapper
 from ocp_panda_reaching import OCPPandaReaching
 from ocp_panda_reaching_obs_single_point import OCPPandaReachingColWithSingleCol
 
-from utils import BLUE
+from utils import BLUE, YELLOW_FULL
 
 ### PARAMETERS
 # Number of nodes of the trajectory
@@ -59,9 +59,20 @@ IG_OBSTACLE = cmodel.addGeometryObject(OBSTACLE_GEOM_OBJECT)
 INITIAL_CONFIG = pin.neutral(rmodel)
 
 ### 
-CollisionrobotShapeID = cmodel.getGeometryId("panda2_link5_capsule28")
-cmodel.addCollisionPair(pin.CollisionPair(CollisionrobotShapeID, IG_OBSTACLE))
-cmodel.geometryObjects[CollisionrobotShapeID].meshColor = BLUE
+CollisionrobotShapeID = cmodel.getGeometryId("panda2_link5_sc_4")
+CollisionrobotShape = cmodel.geometryObjects[CollisionrobotShapeID]
+collision_shape = pin.GeometryObject(
+                "elipsoid",
+                CollisionrobotShape.parentJoint,
+                CollisionrobotShape.parentFrame,
+                CollisionrobotShape.placement,
+                hppfcl.Ellipsoid(CollisionrobotShape.geometry.radius, CollisionrobotShape.geometry.radius,CollisionrobotShape.geometry.radius),
+                )
+collision_shape.meshColor = YELLOW_FULL
+id = cmodel.addGeometryObject(collision_shape)
+print(id)
+cmodel.addCollisionPair(pin.CollisionPair(cmodel.getGeometryId("elipsoid"), IG_OBSTACLE))
+# cmodel.geometryObjects[CollisionrobotShapeID].meshColor = BLUE
 
 cdata = cmodel.createData()
 

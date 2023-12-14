@@ -123,7 +123,7 @@ class OCPPandaReaching:
 # Define solver
         ddp = mim_solvers.SolverSQP(problem)
         ddp.use_filter_line_search = False
-        ddp.termination_tolerance = 1e-4
+        ddp.termination_tolerance = 1e-3
         # ddp.max_qp_iters = 10000
         ddp.with_callbacks = True 
 

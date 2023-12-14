@@ -128,8 +128,8 @@ class RobotWrapper:
         # Replacing the cylinders by capsules
         for i, geometry_object in enumerate(collision_model_reduced_copy.geometryObjects):
             
-            if isinstance(geometry_object.geometry, hppfcl.Sphere):
-                self._collision_model_reduced.removeGeometryObject(geometry_object.name)
+            # if isinstance(geometry_object.geometry, hppfcl.Sphere):
+            #     self._collision_model_reduced.removeGeometryObject(geometry_object.name)
             # Only selecting the cylinders
             if isinstance(geometry_object.geometry, hppfcl.Cylinder):
                 capsule = pin.GeometryObject(
@@ -158,11 +158,11 @@ class RobotWrapper:
         
         
         # For some reasons, the following cylinders aren't removed with the loop from before.                 
-        self._collision_model_reduced.removeGeometryObject("panda2_link0_sc_0")
-        self._collision_model_reduced.removeGeometryObject('panda2_link7_sc_3')
-        self._collision_model_reduced.removeGeometryObject('panda2_link5_sc_0')
-        self._collision_model_reduced.removeGeometryObject('panda2_link4_sc_0')
-        self._collision_model_reduced.removeGeometryObject('panda2_link2_sc_0')             
+        # self._collision_model_reduced.removeGeometryObject("panda2_link0_sc_0")
+        # self._collision_model_reduced.removeGeometryObject('panda2_link7_sc_3')
+        # self._collision_model_reduced.removeGeometryObject('panda2_link5_sc_0')
+        # self._collision_model_reduced.removeGeometryObject('panda2_link4_sc_0')
+        # self._collision_model_reduced.removeGeometryObject('panda2_link2_sc_0')             
         
         if self._auto_col:
             self._collision_model_reduced.addAllCollisionPairs()
