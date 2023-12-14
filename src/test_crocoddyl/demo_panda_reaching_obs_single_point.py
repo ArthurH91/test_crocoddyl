@@ -1,5 +1,4 @@
 from os.path import dirname, join, abspath
-import argparse
 import time
 import numpy as np
 
@@ -13,20 +12,10 @@ from ocp_panda_reaching_obs_single_point import OCPPandaReachingColWithSingleCol
 
 from utils import BLUE
 
-###* PARSERS
-parser = argparse.ArgumentParser()
-
-parser.add_argument(
-    "-d", "--display", help="display the results", action="store_true", default=False
-)
-
-
-args = parser.parse_args()
-
-###* OPTIONS
-WITH_DISPLAY = args.display
+### PARAMETERS
+# Number of nodes of the trajectory
 T = 200
-
+# Time step between each node
 dt = 0.001
 
 
@@ -69,22 +58,21 @@ IG_OBSTACLE = cmodel.addGeometryObject(OBSTACLE_GEOM_OBJECT)
 ### INITIAL CONFIG OF THE ROBOT
 INITIAL_CONFIG = pin.neutral(rmodel)
 
-
-end_effector_id = cmodel.getGeometryId("panda2_link5_capsule28")
-cmodel.addCollisionPair(pin.CollisionPair(end_effector_id, IG_OBSTACLE))
-cmodel.geometryObjects[end_effector_id].meshColor = BLUE
+### 
+CollisionrobotShapeID = cmodel.getGeometryId("panda2_link5_capsule28")
+cmodel.addCollisionPair(pin.CollisionPair(CollisionrobotShapeID, IG_OBSTACLE))
+cmodel.geometryObjects[CollisionrobotShapeID].meshColor = BLUE
 
 cdata = cmodel.createData()
 
 # Generating the meshcat visualizer
-if WITH_DISPLAY:
-    MeshcatVis = MeshcatWrapper()
-    vis, meshcatVis = MeshcatVis.visualize(
-        TARGET_POSE,
-        robot_model=rmodel,
-        robot_collision_model=cmodel,
-        robot_visual_model=vmodel,
-    )
+MeshcatVis = MeshcatWrapper()
+vis, meshcatVis = MeshcatVis.visualize(
+    TARGET_POSE,
+    robot_model=rmodel,
+    robot_collision_model=cmodel,
+    robot_visual_model=vmodel,
+)
 
 ### INITIAL X0
 q0 = INITIAL_CONFIG
@@ -135,10 +123,9 @@ ddp = problem()
 # XS_init = [x0] * (T+1)
 # US_init = [np.zeros(rmodel.nv)] * T 
 # US_init = ddp.problem.quasiStatic(XS_init[:-1])
-ddp.solve(XS_init, US_init)
-# Solving the problem
 
-# log = ddp.getCallbacks()[0]
+# Solving the problem
+ddp.solve(XS_init, US_init)
 
 print("End of the computation, press enter to display the traj if requested.")
 ### DISPLAYING THE TRAJ

@@ -107,7 +107,7 @@ class ResidualCollision(crocoddyl.ResidualModelAbstract):
         # Doing the same for the second shape.
         self._shape2_geom = self._shape2.geometry
         self._shape2_placement = self._geom_data.oMg[self._shape2_id]
-        
+
         # Computing the distance
         distance = pydiffcol.distance(
             self._shape1_geom,
@@ -119,58 +119,68 @@ class ResidualCollision(crocoddyl.ResidualModelAbstract):
         )
         return distance
 
-    def calcDiff(self, data, x, u=None):
+    def calcDiff(self, data, x, u = None):
+        self.derivative_diffcol(data, x, u = None)
+        # self.calcDiff_numdiff(data, x)
+        data.Rx[:self.nq] = self._J
+        
+    def derivative_diffcol(self, data, x, u=None):
+    # Storing nq outside of state.
+        nq = self.state.nq
+
+        # Storing q outside of the state vector.
+        self.q = np.array(x[:nq])
+
+        ### Computes the distance for the collision pair pair_id
+        # Updating the position of the joints & the geometry objects.
+        pin.updateGeometryPlacements(
+            self._pinocchio,
+            data.shared.pinocchio,
+            self._geom_model,
+            self._geom_data,
+            self.q,
+        )
+
+    # Computing the pinocchio jacobians
+        pin.computeJointJacobians(self._pinocchio, data.shared.pinocchio, self.q)
+
+        # Computing the distance derivatives of pydiffcol
+        pydiffcol.distance_derivatives(
+            self._shape1_geom,
+            self._shape1_placement,
+            self._shape2_geom,
+            self._shape2_placement,
+            self._req,
+            self._res,
+            self._req_diff,
+            self._res_diff,
+        )
+
+        # Jacobian of the parent frame of the shape1
+        jacobian = pin.computeFrameJacobian(
+            self._pinocchio,
+            data.shared.pinocchio,
+            self.q,
+            self._shape1.parentFrame,
+            pin.LOCAL_WORLD_ALIGNED,
+        )
+
+        # The jacobian here is the multiplication of the jacobian of the end effector and the jacobian of the distance between the geometry object and the obstacle
+        self._J = np.dot(self._res_diff.ddist_dM1, jacobian)
+        # print(f"self.calcDiff_numdiff(data, x) : {self.calcDiff_numdiff(data, x) }")
+        # print(f"J : {J}")
+        # assert np.isclose(np.linalg.norm(self.calcDiff_numdiff(data, x)), np.linalg.norm(J), 1e-3) 
+        # compute the residual derivatives
+        data.Rx[:nq] = self._J
+    
+    def calcDiff_numdiff(self, data,x):
+        j_diff = np.zeros(self.nq)
         fx = self.f(data, x[: self.nq])
         for i in range(self.nq):
             e = np.zeros(self.nq)
             e[i] = 1e-6
-
-            data.Rx[i] = (self.f(data, x[: self.nq] + e) - fx) / e[i]
-
-    # # Storing nq outside of state.
-    #     nq = self.state.nq
-
-    #     # Storing q outside of the state vector.
-    #     self.q = np.array(x[:nq])
-
-    #     ### Computes the distance for the collision pair pair_id
-    #     # Updating the position of the joints & the geometry objects.
-    #     pin.updateGeometryPlacements(
-    #         self.pinocchio,
-    #         data.shared.pinocchio,
-    #         self.geom_model,
-    #         self.geom_data,
-    #         self.q,
-    #     )
-
-    # # Computing the pinocchio jacobians
-    #     pin.computeJointJacobians(self.pinocchio, data.shared.pinocchio, self.q)
-
-    #     # Computing the distance derivatives of pydiffcol
-    #     pydiffcol.distance_derivatives(
-    #         self.shape1_geom,
-    #         self.shape1_placement,
-    #         self.shape2_geom,
-    #         self.shape2_placement,
-    #         self.req,
-    #         self.res,
-    #         self.req_diff,
-    #         self.res_diff,
-    #     )
-
-    #     # Jacobian of the parent frame of the shape1
-    #     jacobian = pin.computeFrameJacobian(
-    #         self.pinocchio,
-    #         data.shared.pinocchio,
-    #         self.q,
-    #         self.parentFrame,
-    #         pin.LOCAL,
-    #     )
-
-    #     # The jacobian here is the multiplication of the jacobian of the end effector and the jacobian of the distance between the geometry object and the obstacle
-    #     J = np.dot(self.res_diff.dw1_loc_dM1, jacobian)
-    #     # compute the residual derivatives
-    #     data.Rx[:3, :nq] = J
+            j_diff[i] = (self.f(data, x[: self.nq] + e) - fx) / e[i]
+        self._J = j_diff
 
 
 if __name__ == "__main__":
