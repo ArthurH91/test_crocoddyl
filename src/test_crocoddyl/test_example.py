@@ -178,7 +178,7 @@ def create_robot(M_target=pin.SE3.Identity()):
 
     # Creation of the joint 1 (a revolut one around the y axis)
     Mj1 = pin.SE3.Identity()
-    Mj1.translation = np.array([0, 0, 3.5])
+    Mj1.translation = np.array([0, 0, 0])
     joint1 = rmodel.addJoint(joint_universe, revolut_joint_y, Mj1, "joint1")
 
     # Creation of the frame F1
@@ -238,21 +238,20 @@ def dist(q):
 
 def dist_numdiff(q):
     j_diff = np.zeros(nq)
-    fx = f(data, x[: nq])
+    fx = dist(q)
     for i in range(nq):
         e = np.zeros(nq)
         e[i] = 1e-6
-        j_diff[i] = (f(data, x[: nq] + e) - fx) / e[i]
-    _J = j_diff
-    
+        j_diff[i] = (dist(q + e) - fx) / e[i]
+    return j_diff
 if __name__ == "__main__":
     # pin.seed(0)
 
     # Setup
     vis = create_visualizer(axes=True)
     target_pose = pin.SE3.Identity()
-    target_pose.translation = np.array([0, 10, 0])
-    rmodel, gmodel = create_robot(pin.SE3.Random())
+    target_pose.translation = np.array([0, 3.1, 0])
+    rmodel, gmodel = create_robot(target_pose)
     rdata = rmodel.createData()
     gdata = gmodel.createData()
     q = pin.neutral(rmodel)
@@ -285,8 +284,9 @@ if __name__ == "__main__":
     shape2_geom = shape2.geometry
     shape2_placement = gdata.oMg[shape2_id]
 
-    print(dist(q))
-    
+    print(f"dist(q) : {round(dist(q),6)}")
+    dist2 = np.linalg.norm(shape1_placement.translation - shape2_placement.translation)
+    print(f"np.linalg.norm(dist2) : {round(np.linalg.norm(dist2) - 3,6)}")
     pin.forwardKinematics(rmodel, rdata, q)
     pin.updateGeometryPlacements(rmodel, rdata, gmodel, gdata, q)
 
@@ -312,7 +312,7 @@ if __name__ == "__main__":
     )
     
     print(np.dot(res_diff.ddist_dM1, jacobian))
-    print(jacobian)
-    print(res_diff.ddist_dM1)
+    print(dist_numdiff(q))
+    assert np.isclose(np.linalg.norm(np.dot(res_diff.ddist_dM1, jacobian)), np.linalg.norm(dist_numdiff(q)))
     
     

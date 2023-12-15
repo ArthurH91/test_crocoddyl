@@ -117,11 +117,20 @@ class ResidualCollision(crocoddyl.ResidualModelAbstract):
             self._req,
             self._res,
         )
+        
+        dist2 = np.linalg.norm(self._shape1_placement.translation - self._shape2_placement.translation)
+        print(f"dist2 = {dist2}")
+        print(f"distance : {distance}")
         return distance
 
     def calcDiff(self, data, x, u = None):
         self.derivative_diffcol(data, x, u = None)
-        # self.calcDiff_numdiff(data, x)
+        print(f"self._J : {self._J}")
+
+        self.calcDiff_numdiff(data, x)
+        print(f"self._J numdiff: {self._J}")
+        
+        print("__________________")
         data.Rx[:self.nq] = self._J
         
     def derivative_diffcol(self, data, x, u=None):
@@ -140,7 +149,10 @@ class ResidualCollision(crocoddyl.ResidualModelAbstract):
             self._geom_data,
             self.q,
         )
+        pin.forwardKinematics(self._pinocchio,  data.shared.pinocchio,  self.q)
+        pin.updateGeometryPlacements(self._pinocchio,  data.shared.pinocchio, self._geom_model, self._geom_data,  self.q)
 
+        pin.computeJointJacobians(self._pinocchio,  data.shared.pinocchio, self.q )
     # Computing the pinocchio jacobians
         pin.computeJointJacobians(self._pinocchio, data.shared.pinocchio, self.q)
 
