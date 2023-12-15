@@ -390,41 +390,39 @@ def linear_gradient(start_hex, finish_hex="#FFFFFF", n=10):
 
     return color_dict(RGB_list)
 
-try : 
-    def select_strategy(strat: str, verbose: bool = False) -> Tuple[hppfcl.DistanceRequest, pydiffcol.DerivativeRequest]:
-        req = hppfcl.DistanceRequest()
-        req.gjk_initial_guess = hppfcl.GJKInitialGuess.CachedGuess
-        req.gjk_convergence_criterion = hppfcl.GJKConvergenceCriterion.DualityGap
-        req.gjk_convergence_criterion_type = hppfcl.GJKConvergenceCriterionType.Absolute
-        req.gjk_tolerance = 1e-8
-        req.epa_tolerance = 1e-8
-        req.epa_max_face_num = 1000
-        req.epa_max_vertex_num = 1000
-        req.epa_max_iterations = 1000
+def select_strategy(strat: str, verbose: bool = False) -> Tuple[hppfcl.DistanceRequest, pydiffcol.DerivativeRequest]:
+    req = hppfcl.DistanceRequest()
+    req.gjk_initial_guess = hppfcl.GJKInitialGuess.CachedGuess
+    req.gjk_convergence_criterion = hppfcl.GJKConvergenceCriterion.DualityGap
+    req.gjk_convergence_criterion_type = hppfcl.GJKConvergenceCriterionType.Absolute
+    req.gjk_tolerance = 1e-8
+    req.epa_tolerance = 1e-8
+    req.epa_max_face_num = 1000
+    req.epa_max_vertex_num = 1000
+    req.epa_max_iterations = 1000
+    req_diff = pydiffcol.DerivativeRequest()
+    req_diff.warm_start = np.array([1., 0., 0.])
+    req_diff.support_hint = np.array([0, 0], dtype=np.int32)
+    req_diff.use_analytic_hessians = True
 
-        req_diff = pydiffcol.DerivativeRequest()
-        req_diff.warm_start = np.array([1., 0., 0.])
-        req_diff.support_hint = np.array([0, 0], dtype=np.int32)
+    if strat == "finite_differences":
+        req_diff.derivative_type = pydiffcol.DerivativeType.FiniteDifferences
+    elif strat == "zero_order_gaussian":
+        req_diff.derivative_type = pydiffcol.DerivativeType.ZeroOrderGaussian
+    elif strat == "first_order_gaussian":
+        req_diff.derivative_type = pydiffcol.DerivativeType.FirstOrderGaussian
+    elif strat == "first_order_gumbel":
+        req_diff.derivative_type = pydiffcol.DerivativeType.FirstOrderGumbel
+    else:
+        raise NotImplementedError
 
-        if strat == "finite_differences":
-            req_diff.derivative_type = pydiffcol.DerivativeType.FiniteDifferences
-        elif strat == "zero_order_gaussian":
-            req_diff.derivative_type = pydiffcol.DerivativeType.ZeroOrderGaussian
-        elif strat == "first_order_gaussian":
-            req_diff.derivative_type = pydiffcol.DerivativeType.FirstOrderGaussian
-        elif strat == "first_order_gumbel":
-            req_diff.derivative_type = pydiffcol.DerivativeType.FirstOrderGumbel
-        else:
-            raise NotImplementedError
+    if verbose:
+        print("Strategy: ", req_diff.derivative_type)
+        print("Noise: ", req_diff.noise)
+        print("Num samples: ", req_diff.num_samples)
 
-        if verbose:
-            print("Strategy: ", req_diff.derivative_type)
-            print("Noise: ", req_diff.noise)
-            print("Num samples: ", req_diff.num_samples)
+    return req, req_diff
 
-        return req, req_diff
-except:
-    pass
 
 
 def check_limits(rmodel : pin.Model,rdata : pin.Data,  Q : np.ndarray, CHECK_POS = True, CHECK_SPEED = True, CHECK_ACCEL = True):

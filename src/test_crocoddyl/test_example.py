@@ -22,6 +22,14 @@ YELLOW_FULL = np.array([1, 1, 0, 1.0])
 BLACK = np.array([0, 0, 0, 0.5])
 BLACK_FULL = np.array([0, 0, 0, 1.0])
 
+r1 = 0.15
+r2 = 0.055
+
+Mj1 = pin.SE3.Identity()
+Mj1.translation = np.array([0.552628, -0.247652, 1.75971])
+
+target_pose = pin.SE3.Identity()
+target_pose.translation = np.array([0.25, -0.45, 1.5])
 
 def create_visualizer(grid=False, axes=False):
     vis = meshcat.Visualizer(zmq_url="tcp://127.0.0.1:6000")
@@ -43,10 +51,11 @@ def select_strategy(strat: str, verbose: bool = False):
     req.epa_max_face_num = 1000
     req.epa_max_vertex_num = 1000
     req.epa_max_iterations = 1000
-
+    
     req_diff = pydiffcol.DerivativeRequest()
     req_diff.warm_start = np.array([1.0, 0.0, 0.0])
     req_diff.support_hint = np.array([0, 0], dtype=np.int32)
+    req_diff.use_analytic_hessians = True
 
     if strat == "finite_differences":
         req_diff.derivative_type = pydiffcol.DerivativeType.FiniteDifferences
@@ -177,8 +186,7 @@ def create_robot(M_target=pin.SE3.Identity()):
     # Creation of the robot
 
     # Creation of the joint 1 (a revolut one around the y axis)
-    Mj1 = pin.SE3.Identity()
-    Mj1.translation = np.array([0, 0, 0])
+
     joint1 = rmodel.addJoint(joint_universe, revolut_joint_y, Mj1, "joint1")
 
     # Creation of the frame F1
@@ -197,7 +205,6 @@ def create_robot(M_target=pin.SE3.Identity()):
     gmodel = pin.GeometryModel()
 
     # Creation of the shape of the first link
-    r1 = 1.5  # Radii of the Ellipsoid
 
     # Creation of the shape of the 2nd link
     endeff_shape = hppfcl.Sphere(r1)
@@ -208,7 +215,7 @@ def create_robot(M_target=pin.SE3.Identity()):
 
     # Creation of the shape of the target
     T_target = rmodel.frames[target].placement
-    target_shape = hppfcl.Sphere(r1)
+    target_shape = hppfcl.Sphere(r2)
     target_geom = pin.GeometryObject(
         "target_geom", rmodel.getJointId("universe"), target, T_target, target_shape
     )
@@ -216,15 +223,16 @@ def create_robot(M_target=pin.SE3.Identity()):
 
     return rmodel, gmodel
 
+
 def dist(q):
     pin.forwardKinematics(rmodel, rdata, q)
     pin.updateGeometryPlacements(
-            rmodel,
-            rdata,
-            gmodel,
-            gdata,
-            q,
-        )
+        rmodel,
+        rdata,
+        gmodel,
+        gdata,
+        q,
+    )
     # Computing the distance
     distance = pydiffcol.distance(
         shape1_geom,
@@ -236,6 +244,7 @@ def dist(q):
     )
     return distance
 
+
 def dist_numdiff(q):
     j_diff = np.zeros(nq)
     fx = dist(q)
@@ -244,13 +253,13 @@ def dist_numdiff(q):
         e[i] = 1e-6
         j_diff[i] = (dist(q + e) - fx) / e[i]
     return j_diff
+
+
 if __name__ == "__main__":
     # pin.seed(0)
 
     # Setup
     vis = create_visualizer(axes=True)
-    target_pose = pin.SE3.Identity()
-    target_pose.translation = np.array([0, 3.1, 0])
     rmodel, gmodel = create_robot(target_pose)
     rdata = rmodel.createData()
     gdata = gmodel.createData()
@@ -286,22 +295,22 @@ if __name__ == "__main__":
 
     print(f"dist(q) : {round(dist(q),6)}")
     dist2 = np.linalg.norm(shape1_placement.translation - shape2_placement.translation)
-    print(f"np.linalg.norm(dist2) : {round(np.linalg.norm(dist2) - 3,6)}")
+    print(f"np.linalg.norm(dist2) : {round(np.linalg.norm(dist2) - r1 -r2,6)}")
     pin.forwardKinematics(rmodel, rdata, q)
     pin.updateGeometryPlacements(rmodel, rdata, gmodel, gdata, q)
 
     pin.computeJointJacobians(rmodel, rdata, q)
 
     pydiffcol.distance_derivatives(
-    shape1_geom,
-    shape1_placement,
-    shape2_geom,
-    shape2_placement,
-    req,
-    res,
-    req_diff,
-    res_diff,
-)
+        shape1_geom,
+        shape1_placement,
+        shape2_geom,
+        shape2_placement,
+        req,
+        res,
+        req_diff,
+        res_diff,
+    )
 
     jacobian = pin.computeFrameJacobian(
         rmodel,
@@ -310,9 +319,10 @@ if __name__ == "__main__":
         shape1.parentFrame,
         pin.LOCAL,
     )
-    
+
     print(np.dot(res_diff.ddist_dM1, jacobian))
     print(dist_numdiff(q))
-    assert np.isclose(np.linalg.norm(np.dot(res_diff.ddist_dM1, jacobian)), np.linalg.norm(dist_numdiff(q)))
-    
-    
+    assert np.isclose(
+        np.linalg.norm(np.dot(res_diff.ddist_dM1, jacobian)),
+        np.linalg.norm(dist_numdiff(q)),
+    )

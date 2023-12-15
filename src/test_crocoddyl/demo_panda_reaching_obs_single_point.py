@@ -68,6 +68,7 @@ collision_shape = pin.GeometryObject(
                 CollisionrobotShape.placement,
                 hppfcl.Ellipsoid(CollisionrobotShape.geometry.radius, CollisionrobotShape.geometry.radius,CollisionrobotShape.geometry.radius),
                 )
+print(CollisionrobotShape.geometry.radius)
 collision_shape.meshColor = YELLOW_FULL
 id = cmodel.addGeometryObject(collision_shape)
 print(id)

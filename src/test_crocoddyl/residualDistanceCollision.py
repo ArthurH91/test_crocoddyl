@@ -116,21 +116,40 @@ class ResidualCollision(crocoddyl.ResidualModelAbstract):
             self._shape2_placement,
             self._req,
             self._res,
-        )
+        ) 
         
-        dist2 = np.linalg.norm(self._shape1_placement.translation - self._shape2_placement.translation)
-        print(f"dist2 = {dist2}")
-        print(f"distance : {distance}")
         return distance
 
     def calcDiff(self, data, x, u = None):
-        self.derivative_diffcol(data, x, u = None)
-        print(f"self._J : {self._J}")
-
-        self.calcDiff_numdiff(data, x)
-        print(f"self._J numdiff: {self._J}")
         
-        print("__________________")
+        # Computing the distance
+        distance = pydiffcol.distance(
+            self._shape1_geom,
+            self._shape1_placement,
+            self._shape2_geom,
+            self._shape2_placement,
+            self._req,
+            self._res,
+        ) 
+        
+        dist2 = np.linalg.norm(self._shape1_placement.translation - self._shape2_placement.translation) - 1.5e-1 - 0.055
+        # print(f"dist diff = {dist2 - distance}")
+        # # print(f"distance : {distance}")
+        # print(f"self._shape1_placement : {self._shape1_placement}")
+        # print(f"self._shape2_placement : {self._shape2_placement}")
+        # print(f"self._shape1_radius : {self._shape1_geom.radii}")
+        # print(f"self._shape2_radius : {self._shape2_geom.radius}")
+
+        
+        self.derivative_diffcol(data, x, u = None)
+        # print(f"self._J : {self._J}")
+
+        # self.calcDiff_numdiff(data, x)
+        # print(f"self._J numdiff: {self._J}")
+        
+        # print(f"q : {x[:self.nq]}")
+        
+        # print("__________________")
         data.Rx[:self.nq] = self._J
         
     def derivative_diffcol(self, data, x, u=None):
@@ -184,6 +203,8 @@ class ResidualCollision(crocoddyl.ResidualModelAbstract):
         # assert np.isclose(np.linalg.norm(self.calcDiff_numdiff(data, x)), np.linalg.norm(J), 1e-3) 
         # compute the residual derivatives
         data.Rx[:nq] = self._J
+        
+        
     
     def calcDiff_numdiff(self, data,x):
         j_diff = np.zeros(self.nq)
