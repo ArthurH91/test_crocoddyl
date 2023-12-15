@@ -73,7 +73,7 @@ def dist_numdiff(q):
     fx = dist(q)
     for i in range(nq):
         e = np.zeros(nq)
-        e[i] = 1e-2
+        e[i] = 1e-6
         j_diff[i] = (dist(q + e) - dist(q - e)) / e[i] / 2
     return j_diff
 
@@ -105,7 +105,7 @@ def ddist(q):
         rdata,
         q,
         shape1.parentFrame,
-        pin.LOCAL,
+        pin.LOCAL_WORLD_ALIGNED,
     )   
     return(np.dot(res_diff.ddist_dM1,jacobian))
 
@@ -201,14 +201,11 @@ if __name__ == "__main__":
         ddist_list.append(ddist_diffcol)
         ddist_numdiff_list.append(ddist_numdiff)
 
-
-    plt.figure()
-    plt.plot(alpha, l)
-    plt.xlabel("alpha")
-    plt.ylabel("distance")
-    plt.figure()
-    plt.plot(alpha, ddist_list,"--" , label = "diffcol")
-    plt.plot(alpha, ddist_numdiff_list, label = "numdiff")
-    plt.legend()
-    plt.title("Numdiff vs Diffcol derivatives")
+    plots = [331, 332, 333, 334, 335, 336, 337]
+    for k in range(nq):
+        plt.subplot(plots[k])
+        plt.plot(alpha, np.array(ddist_list)[:,k],"--" , label = "diffcol")
+        plt.plot(alpha, np.array(ddist_numdiff_list)[:, k], label = "numdiff")
+        plt.title("joint" + str(k))
+        plt.legend()
     plt.show()
