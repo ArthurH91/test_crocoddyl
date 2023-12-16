@@ -6,13 +6,13 @@ import hppfcl
 import pinocchio as pin
 import pydiffcol
 
-from wrapper_meshcat import MeshcatWrapper
 
-### HELPERS 
+### HELPERS
 
-YELLOW_FULL = np.array([1, 1, 0, 1.])
+YELLOW_FULL = np.array([1, 1, 0, 1.0])
 BLUE_FULL = np.array([144, 169, 183, 255]) / 255
 
+WITH_DISPLAY = False
 
 def select_strategy(strat: str, verbose: bool = False):
     req = hppfcl.DistanceRequest()
@@ -25,7 +25,7 @@ def select_strategy(strat: str, verbose: bool = False):
     req.epa_max_vertex_num = 1000
     req.epa_max_iterations = 1000
     req_diff = pydiffcol.DerivativeRequest()
-    req_diff.warm_start = np.array([1., 0., 0.])
+    req_diff.warm_start = np.array([1.0, 0.0, 0.0])
     req_diff.support_hint = np.array([0, 0], dtype=np.int32)
     req_diff.use_analytic_hessians = True
 
@@ -47,69 +47,14 @@ def select_strategy(strat: str, verbose: bool = False):
 
     return req, req_diff
 
-def dist(q):
-    # Computing the distance
-    pin.framesForwardKinematics(model_reduced, rdata, q)
-    pin.updateGeometryPlacements(
-        model_reduced, rdata, collision_model_reduced, cdata, q 
-    )
 
-    shape1_placement = cdata.oMg[shape1_id]
-    shape2_placement = cdata.oMg[shape2_id]
+def wrapper_robot():
+    """Load the robot from the models folder.
 
-    distance = pydiffcol.distance(
-        shape1_geom,
-        shape1_placement,
-        shape2_geom,
-        shape2_placement,
-        req,
-        res,
-    )
-    return distance
-
-
-def dist_numdiff(q):
-    j_diff = np.zeros(nq)
-    fx = dist(q)
-    for i in range(nq):
-        e = np.zeros(nq)
-        e[i] = 1e-6
-        j_diff[i] = (dist(q + e) - dist(q - e)) / e[i] / 2
-    return j_diff
-
-def ddist(q):
-    # Computing the distance
-    pin.framesForwardKinematics(model_reduced, rdata, q)
-    pin.updateGeometryPlacements(
-        model_reduced, rdata, collision_model_reduced, cdata, q 
-    )
-
-    shape1_placement = cdata.oMg[shape1_id]
-    shape2_placement = cdata.oMg[shape2_id]
-
-    pin.computeJointJacobians(model_reduced, rdata, q)
-
-    pydiffcol.distance_derivatives(
-        shape1_geom,
-        shape1_placement,
-        shape2_geom,
-        shape2_placement,
-        req,
-        res,
-        req_diff,
-        res_diff,
-    )
-
-    jacobian = pin.computeFrameJacobian(
-        model_reduced,
-        rdata,
-        q,
-        shape1.parentFrame,
-        pin.LOCAL_WORLD_ALIGNED,
-    )   
-    return(np.dot(res_diff.ddist_dM1,jacobian))
-
-if __name__ == "__main__":
+    Returns:
+        rmodel, vmodel, cmodel: Robot model, visual model & collision model of the robot.
+    """
+    ### LOADING THE ROBOT
     pinocchio_model_dir = join(dirname(dirname(str(abspath(__file__)))), "models")
     model_path = join(pinocchio_model_dir, "franka_description/robots")
     mesh_dir = pinocchio_model_dir
@@ -120,7 +65,6 @@ if __name__ == "__main__":
     rmodel, collision_model, visual_model = pin.buildModelsFromUrdf(
         urdf_model_path, mesh_dir, pin.JointModelFreeFlyer()
     )
-
 
     q0 = pin.neutral(rmodel)
     jointsToLockIDs = [1, 9, 10]
@@ -138,64 +82,183 @@ if __name__ == "__main__":
         geometric_models_reduced[1],
     )
 
-    # Modifying the collision model to add the capsules
-    rdata = model_reduced.createData()
-    cdata = collision_model_reduced.createData()
-    q0 = pin.neutral(model_reduced)
-    q0 = pin.randomConfiguration(model_reduced)
-
-    nq = model_reduced.nq
-    # Updating the models
-    pin.framesForwardKinematics(model_reduced, rdata, q0)
-    pin.updateGeometryPlacements(model_reduced, rdata, collision_model_reduced, cdata, q0)
+    return model_reduced, visual_model_reduced, collision_model_reduced
 
 
-    shape1_id = collision_model_reduced.getGeometryId("panda2_link7_sc_2")
-    shape1 = collision_model_reduced.geometryObjects[shape1_id]
-    # Getting the geometry of the shape 1
-    shape1_geom = shape1.geometry
-    # Getting its pose in the world reference
+######################################## DISTANCE & ITS DERIVATIVES COMPUTATION #######################################
+
+
+def dist(q):
+    """Computes the distance with diffcol
+
+    Args:
+        q (np.ndarray): Configuration of the robot
+
+    Returns:
+        distance : distance between shape 1 & shape 2
+    """
+    # Computing the distance
+    pin.framesForwardKinematics(rmodel, rdata, q)
+    pin.updateGeometryPlacements(rmodel, rdata, cmodel, cdata, q)
+
     shape1_placement = cdata.oMg[shape1_id]
-    shape1.meshColor = BLUE_FULL
-    # Doing the same for the second shape.
-    shape2_id = collision_model_reduced.getGeometryId("panda2_link3_sc_1")
-    shape2 = collision_model_reduced.geometryObjects[shape2_id]
-    shape2_geom = shape2.geometry
     shape2_placement = cdata.oMg[shape2_id]
-    shape2.meshColor = YELLOW_FULL
+
+    distance = pydiffcol.distance(
+        shape1_geom,
+        shape1_placement,
+        shape2_geom,
+        shape2_placement,
+        req,
+        res,
+    )
+    return distance
 
 
-    # Generating the meshcat visualizer
-    MeshcatVis = MeshcatWrapper()
-    vis, meshcatVis = MeshcatVis.visualize(
-        robot_model=model_reduced,
-        robot_collision_model=collision_model_reduced,
-        robot_visual_model=collision_model_reduced,
+def dist_numdiff(q):
+    """Finite derivative of the dist function.
+
+    Args:
+        q (np.ndarray): Configuration of the robot
+
+    Returns:
+        distance derivative: distance derivative between shape 1 & shape 2
+    """
+    j_diff = np.zeros(nq)
+    fx = dist(q)
+    for i in range(nq):
+        e = np.zeros(nq)
+        e[i] = 1e-6
+        j_diff[i] = (dist(q + e) - dist(q - e)) / e[i] / 2
+    return j_diff
+
+
+def ddist(q):
+    """Diffcol derivative of the dist function.
+
+    Args:
+        q (np.ndarray): Configuration of the robot
+
+    Returns:
+        distance derivative: distance derivative between shape 1 & shape 2
+    """
+
+    # Computing the distance
+    pin.framesForwardKinematics(rmodel, rdata, q)
+    pin.updateGeometryPlacements(rmodel, rdata, cmodel, cdata, q)
+
+    shape1_placement = cdata.oMg[shape1_id]
+    shape2_placement = cdata.oMg[shape2_id]
+
+    pin.computeJointJacobians(rmodel, rdata, q)
+
+    pydiffcol.distance_derivatives(
+        shape1_geom,
+        shape1_placement,
+        shape2_geom,
+        shape2_placement,
+        req,
+        res,
+        req_diff,
+        res_diff,
     )
 
-    vis.display(q0)
+    jacobian = pin.computeFrameJacobian(
+        rmodel,
+        rdata,
+        q,
+        shape1.parentFrame,
+        pin.LOCAL,
+    )
+    return np.dot(res_diff.ddist_dM1, jacobian)
 
+
+if __name__ == "__main__":
+    # Loading the robot
+    rmodel, vmodel, cmodel = wrapper_robot()
+
+    # Creating the datas model
+    rdata = rmodel.createData()
+    cdata = cmodel.createData()
+
+    # Initial configuration
+    q0 = pin.neutral(rmodel)
+
+    # Number of joints
+    nq = rmodel.nq
+
+    # Updating the models
+    pin.framesForwardKinematics(rmodel, rdata, q0)
+    pin.updateGeometryPlacements(rmodel, rdata, cmodel, cdata, q0)
+
+    # Creating the shapes for the collision detection.
+    shape1_id = cmodel.getGeometryId("panda2_link7_sc_2")
+
+    # Making sure the shape exists
+    assert shape1_id <= len(cmodel.geometryObjects)
+
+    # Coloring the sphere
+    shape1 = cmodel.geometryObjects[shape1_id]
+    shape1.meshColor = BLUE_FULL
+
+    # Getting the geometry of the shape 1
+    shape1_geom = shape1.geometry
+
+    # Making sure the shape is a sphere
+    assert isinstance(shape1_geom, hppfcl.Sphere)
+
+    # Getting its pose in the world reference
+    shape1_placement = cdata.oMg[shape1_id]
+
+    # Doing the same for the second shape.
+    shape2_id = cmodel.getGeometryId("panda2_link3_sc_1")
+    assert shape2_id <= len(cmodel.geometryObjects)
+
+    # Coloring the sphere
+    shape2 = cmodel.geometryObjects[shape2_id]
+    shape2.meshColor = YELLOW_FULL
+
+    shape2_geom = shape2.geometry
+    assert isinstance(shape2_geom, hppfcl.Sphere)
+
+    # Getting its pose in the world reference
+    shape2_placement = cdata.oMg[shape2_id]
+
+    if WITH_DISPLAY:
+        from wrapper_meshcat import MeshcatWrapper
+        # Generating the meshcat visualizer
+        MeshcatVis = MeshcatWrapper()
+        vis, meshcatVis = MeshcatVis.visualize(
+            robot_model=rmodel,
+            robot_collision_model=cmodel,
+            robot_visual_model=cmodel,
+        )
+        # Displaying the initial 
+        vis.display(q0)
+
+
+    # Distance & Derivative results from diffcol
     req, req_diff = select_strategy("finite_differences")
     res = pydiffcol.DistanceResult()
     res_diff = pydiffcol.DerivativeResult()
 
-
+    # Computing the distance between shape 1 & shape 2 at q0 & comparing with the distance anatically computed
     print(f"dist(q) : {round(dist(q0),6)}")
     dist2 = np.linalg.norm(shape1_placement.translation - shape2_placement.translation)
     print(
         f"np.linalg.norm(dist2) : {round(np.linalg.norm(dist2) - shape1_geom.radius - shape2_geom.radius,6)}"
     )
 
-
-    l = []
+    # Varying k from -pi to pi for a single joint to explore the derivatives of the distance through its full rotation.
+    distance_list = []
     ddist_list = []
     ddist_numdiff_list = []
-    alpha = np.linspace(-np.pi,np.pi,10000)
-    for k in alpha:
-        q = np.array([0,0,0,k,0,0,0])
-        d = dist(q)  
-        l.append(d)
+    theta = np.linspace(-np.pi, np.pi, 10000)
+    for k in theta:
+        q = np.array([0, 0, 0, k, 0, 0, 0])
+        d = dist(q)
         
+        distance_list.append(d)
         ddist_diffcol = ddist(q)
         ddist_numdiff = dist_numdiff(q)
         ddist_list.append(ddist_diffcol)
@@ -204,8 +267,10 @@ if __name__ == "__main__":
     plots = [331, 332, 333, 334, 335, 336, 337]
     for k in range(nq):
         plt.subplot(plots[k])
-        plt.plot(alpha, np.array(ddist_list)[:,k],"--" , label = "diffcol")
-        plt.plot(alpha, np.array(ddist_numdiff_list)[:, k], label = "numdiff")
+        plt.plot(theta, np.array(ddist_list)[:, k], "--", label="diffcol")
+        plt.plot(theta, np.array(ddist_numdiff_list)[:, k], label="numdiff")
         plt.title("joint" + str(k))
+        plt.ylabel(f"Distance derivative w.r.t. joint {k}")
         plt.legend()
+    plt.suptitle("Numdiff derivatives vs diffcol derivatives through theta, the rotation angle of the joint 4.")
     plt.show()

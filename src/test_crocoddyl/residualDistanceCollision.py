@@ -132,7 +132,7 @@ class ResidualCollision(crocoddyl.ResidualModelAbstract):
             self._res,
         ) 
         
-        dist2 = np.linalg.norm(self._shape1_placement.translation - self._shape2_placement.translation) - 1.5e-1 - 0.055
+        # dist2 = np.linalg.norm(self._shape1_placement.translation - self._shape2_placement.translation) - 1.5e-1 - 0.055
         # print(f"dist diff = {dist2 - distance}")
         # # print(f"distance : {distance}")
         # print(f"self._shape1_placement : {self._shape1_placement}")
@@ -141,10 +141,10 @@ class ResidualCollision(crocoddyl.ResidualModelAbstract):
         # print(f"self._shape2_radius : {self._shape2_geom.radius}")
 
         
-        self.derivative_diffcol(data, x, u = None)
+        # self.derivative_diffcol(data, x, u = None)
         # print(f"self._J : {self._J}")
 
-        # self.calcDiff_numdiff(data, x)
+        self.calcDiff_numdiff(data, x)
         # print(f"self._J numdiff: {self._J}")
         
         # print(f"q : {x[:self.nq]}")
