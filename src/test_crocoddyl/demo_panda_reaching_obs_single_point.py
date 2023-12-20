@@ -58,23 +58,11 @@ IG_OBSTACLE = cmodel.addGeometryObject(OBSTACLE_GEOM_OBJECT)
 ### INITIAL CONFIG OF THE ROBOT
 INITIAL_CONFIG = pin.neutral(rmodel)
 
-### 
-CollisionrobotShapeID = cmodel.getGeometryId("panda2_link5_sc_4")
-CollisionrobotShape = cmodel.geometryObjects[CollisionrobotShapeID]
-collision_shape = pin.GeometryObject(
-                "elipsoid",
-                CollisionrobotShape.parentJoint,
-                CollisionrobotShape.parentFrame,
-                CollisionrobotShape.placement,
-                hppfcl.Ellipsoid(CollisionrobotShape.geometry.radius, CollisionrobotShape.geometry.radius,CollisionrobotShape.geometry.radius),
-                )
-print(CollisionrobotShape.geometry.radius)
-collision_shape.meshColor = YELLOW_FULL
-id = cmodel.addGeometryObject(collision_shape)
-print(id)
-cmodel.addCollisionPair(pin.CollisionPair(cmodel.getGeometryId("elipsoid"), IG_OBSTACLE))
-# cmodel.geometryObjects[CollisionrobotShapeID].meshColor = BLUE
-
+### ADDING THE COLLISION PAIR BETWEEN A LINK OF THE ROBOT & THE OBSTACLE
+cmodel.geometryObjects[cmodel.getGeometryId("panda2_link5_sc_4")].meshColor = YELLOW_FULL
+cmodel.addCollisionPair(
+    pin.CollisionPair(cmodel.getGeometryId("panda2_link5_sc_4"), IG_OBSTACLE)
+)
 cdata = cmodel.createData()
 
 # Generating the meshcat visualizer
