@@ -3,6 +3,7 @@ import pinocchio as pin
 import crocoddyl
 from crocoddyl.utils import *
 import pydiffcol
+import hppfcl
 
 from utils import select_strategy
 
@@ -116,22 +117,21 @@ class ResidualCollision(crocoddyl.ResidualModelAbstract):
             self._shape2_placement,
             self._req,
             self._res,
-        ) 
-        
+        )
+
         return distance
 
-    def calcDiff(self, data, x, u = None):
-        
+    def calcDiff(self, data, x, u=None):
         # Computing the distance
-        distance = pydiffcol.distance(
-            self._shape1_geom,
-            self._shape1_placement,
-            self._shape2_geom,
-            self._shape2_placement,
-            self._req,
-            self._res,
-        ) 
-        
+        # distance = pydiffcol.distance(
+        #     self._shape1_geom,
+        #     self._shape1_placement,
+        #     self._shape2_geom,
+        #     self._shape2_placement,
+        #     self._req,
+        #     self._res,
+        # )
+
         # dist2 = np.linalg.norm(self._shape1_placement.translation - self._shape2_placement.translation) - 1.5e-1 - 0.055
         # print(f"dist diff = {dist2 - distance}")
         # # print(f"distance : {distance}")
@@ -140,20 +140,20 @@ class ResidualCollision(crocoddyl.ResidualModelAbstract):
         # print(f"self._shape1_radius : {self._shape1_geom.radii}")
         # print(f"self._shape2_radius : {self._shape2_geom.radius}")
 
-        
         # self.derivative_diffcol(data, x, u = None)
         # print(f"self._J : {self._J}")
 
         self.calcDiff_numdiff(data, x)
+        # self.calcDiff_florent(data,x)
         # print(f"self._J numdiff: {self._J}")
-        
+
         # print(f"q : {x[:self.nq]}")
-        
+
         # print("__________________")
-        data.Rx[:self.nq] = self._J
-        
+        data.Rx[: self.nq] = self._J
+
     def derivative_diffcol(self, data, x, u=None):
-    # Storing nq outside of state.
+        # Storing nq outside of state.
         nq = self.state.nq
 
         # Storing q outside of the state vector.
@@ -168,11 +168,17 @@ class ResidualCollision(crocoddyl.ResidualModelAbstract):
             self._geom_data,
             self.q,
         )
-        pin.forwardKinematics(self._pinocchio,  data.shared.pinocchio,  self.q)
-        pin.updateGeometryPlacements(self._pinocchio,  data.shared.pinocchio, self._geom_model, self._geom_data,  self.q)
+        pin.forwardKinematics(self._pinocchio, data.shared.pinocchio, self.q)
+        pin.updateGeometryPlacements(
+            self._pinocchio,
+            data.shared.pinocchio,
+            self._geom_model,
+            self._geom_data,
+            self.q,
+        )
 
-        pin.computeJointJacobians(self._pinocchio,  data.shared.pinocchio, self.q )
-    # Computing the pinocchio jacobians
+        pin.computeJointJacobians(self._pinocchio, data.shared.pinocchio, self.q)
+        # Computing the pinocchio jacobians
         pin.computeJointJacobians(self._pinocchio, data.shared.pinocchio, self.q)
 
         # Computing the distance derivatives of pydiffcol
@@ -200,13 +206,11 @@ class ResidualCollision(crocoddyl.ResidualModelAbstract):
         self._J = np.dot(self._res_diff.ddist_dM1, jacobian)
         # print(f"self.calcDiff_numdiff(data, x) : {self.calcDiff_numdiff(data, x) }")
         # print(f"J : {J}")
-        # assert np.isclose(np.linalg.norm(self.calcDiff_numdiff(data, x)), np.linalg.norm(J), 1e-3) 
+        # assert np.isclose(np.linalg.norm(self.calcDiff_numdiff(data, x)), np.linalg.norm(J), 1e-3)
         # compute the residual derivatives
         data.Rx[:nq] = self._J
-        
-        
-    
-    def calcDiff_numdiff(self, data,x):
+
+    def calcDiff_numdiff(self, data, x):
         j_diff = np.zeros(self.nq)
         fx = self.f(data, x[: self.nq])
         for i in range(self.nq):
@@ -214,6 +218,39 @@ class ResidualCollision(crocoddyl.ResidualModelAbstract):
             e[i] = 1e-6
             j_diff[i] = (self.f(data, x[: self.nq] + e) - fx) / e[i]
         self._J = j_diff
+
+    def calcDiff_florent(self, data, x):
+        pin.forwardKinematics(self._pinocchio, data.shared.pinocchio, self.q)
+        pin.updateGeometryPlacements(
+            self._pinocchio,
+            data.shared.pinocchio,
+            self._geom_model,
+            self._geom_data,
+            self.q,
+        )
+        jacobian = pin.computeFrameJacobian(
+            self._pinocchio,
+            data.shared.pinocchio,
+            self.q,
+            self._shape1.parentFrame,
+            pin.LOCAL,
+        )
+
+        # Computing the distance
+        distance = hppfcl.distance(
+            self._shape1_geom,
+            self._shape1_placement,
+            self._shape2_geom,
+            self._shape2_placement,
+            self._req,
+            self._res,
+        )
+
+        cp1 = self._res.getNearestPoint1()
+        cp2 = self._res.getNearestPoint2()
+
+        self._J = (cp1 - cp2).T / np.linalg.norm(cp1 - cp2) @ jacobian[:3]
+
 
 
 if __name__ == "__main__":

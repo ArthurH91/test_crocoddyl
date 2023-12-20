@@ -51,7 +51,7 @@ class OCPPandaReachingColWithSingleCol:
         self._TARGET_POSE = TARGET_POSE
         self._OBSTACLE_RADIUS = OBSTACLE_RADIUS
         self._OBSTACLE_POSE = OBSTACLE_POSE
-        self._SAFETRY_TRESHOLD = SAFETY_THRESHOLD
+        self._SAFETY_THRESHOLD = SAFETY_THRESHOLD
 
         # Params of the problem
         self._T = T
@@ -158,7 +158,7 @@ class OCPPandaReachingColWithSingleCol:
         constraint = crocoddyl.ConstraintModelResidual(
             self._state,
             obstacleDistanceResidual,
-            np.array([self._SAFETRY_TRESHOLD]),
+            np.array([self._SAFETY_THRESHOLD]),
             np.array([np.inf]),
         )
 

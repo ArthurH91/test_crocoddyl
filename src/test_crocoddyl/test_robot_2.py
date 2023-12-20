@@ -12,7 +12,7 @@ import pydiffcol
 YELLOW_FULL = np.array([1, 1, 0, 1.0])
 BLUE_FULL = np.array([144, 169, 183, 255]) / 255
 
-WITH_DISPLAY = False
+WITH_DISPLAY = True
 
 def select_strategy(strat: str, verbose: bool = False):
     req = hppfcl.DistanceRequest()
@@ -27,7 +27,7 @@ def select_strategy(strat: str, verbose: bool = False):
     req_diff = pydiffcol.DerivativeRequest()
     req_diff.warm_start = np.array([1.0, 0.0, 0.0])
     req_diff.support_hint = np.array([0, 0], dtype=np.int32)
-    req_diff.use_analytic_hessians = True
+    req_diff.use_analytic_hessians = False
 
     if strat == "finite_differences":
         req_diff.derivative_type = pydiffcol.DerivativeType.FiniteDifferences
@@ -54,6 +54,7 @@ def wrapper_robot():
     Returns:
         rmodel, vmodel, cmodel: Robot model, visual model & collision model of the robot.
     """
+
     ### LOADING THE ROBOT
     pinocchio_model_dir = join(dirname(dirname(str(abspath(__file__)))), "models")
     model_path = join(pinocchio_model_dir, "franka_description/robots")
@@ -246,7 +247,7 @@ if __name__ == "__main__":
     print(f"dist(q) : {round(dist(q0),6)}")
     dist2 = np.linalg.norm(shape1_placement.translation - shape2_placement.translation)
     print(
-        f"np.linalg.norm(dist2) : {round(np.linalg.norm(dist2) - shape1_geom.radius - shape2_geom.radius,6)}"
+        f"np.linalg.norm(dist2) : {dist2 - shape1_geom.radius - shape2_geom.radius:.6f}"
     )
 
     # Varying k from -pi to pi for a single joint to explore the derivatives of the distance through its full rotation.
