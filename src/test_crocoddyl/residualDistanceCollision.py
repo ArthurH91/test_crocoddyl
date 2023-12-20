@@ -38,16 +38,16 @@ class ResidualCollision(crocoddyl.ResidualModelAbstract):
         self._geom_data = geom_data
 
         # Pair ID of the collisionPair
-        self.pair_id = pair_id
+        self._pair_id = pair_id
 
         # Number of joints
-        self.nq = self._pinocchio.nq
+        self._nq = self._pinocchio.nq
 
         # Making sure that the pair of collision exists
-        assert self.pair_id <= len(self._geom_model.collisionPairs)
+        assert self._pair_id <= len(self._geom_model.collisionPairs)
 
         # Collision pair
-        self._collisionPair = self._geom_model.collisionPairs[0]
+        self._collisionPair = self._geom_model.collisionPairs[self._pair_id]
 
         # Geometry ID of the shape 1 of collision pair
         self._shape1_id = self._collisionPair.first
@@ -76,9 +76,9 @@ class ResidualCollision(crocoddyl.ResidualModelAbstract):
         # Checking that shape 1 is belonging to the robot & shape 2 is the obstacle
         assert not "obstacle" in self._shape1.name
         assert "obstacle" in self._shape2.name
-
+        
     def calc(self, data, x, u=None):
-        data.r[:] = self.f(data, x[: self.nq])
+        data.r[:] = self.f(data, x[: self._nq])
 
     def f(self, data, q):
         # Storing q outside of the state vector
@@ -118,7 +118,7 @@ class ResidualCollision(crocoddyl.ResidualModelAbstract):
             self._req,
             self._res,
         )
-
+        
         return distance
 
     def calcDiff(self, data, x, u=None):
@@ -147,10 +147,10 @@ class ResidualCollision(crocoddyl.ResidualModelAbstract):
         # self.calcDiff_florent(data,x)
         # print(f"self._J numdiff: {self._J}")
 
-        # print(f"q : {x[:self.nq]}")
+        # print(f"q : {x[:self._nq]}")
 
         # print("__________________")
-        data.Rx[: self.nq] = self._J
+        data.Rx[: self._nq] = self._J
 
     def derivative_diffcol(self, data, x, u=None):
         # Storing nq outside of state.
@@ -211,12 +211,12 @@ class ResidualCollision(crocoddyl.ResidualModelAbstract):
         data.Rx[:nq] = self._J
 
     def calcDiff_numdiff(self, data, x):
-        j_diff = np.zeros(self.nq)
-        fx = self.f(data, x[: self.nq])
-        for i in range(self.nq):
-            e = np.zeros(self.nq)
+        j_diff = np.zeros(self._nq)
+        fx = self.f(data, x[: self._nq])
+        for i in range(self._nq):
+            e = np.zeros(self._nq)
             e[i] = 1e-6
-            j_diff[i] = (self.f(data, x[: self.nq] + e) - fx) / e[i]
+            j_diff[i] = (self.f(data, x[: self._nq] + e) - fx) / e[i]
         self._J = j_diff
 
     def calcDiff_florent(self, data, x):
