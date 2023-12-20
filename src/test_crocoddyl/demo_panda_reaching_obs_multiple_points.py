@@ -8,7 +8,7 @@ import hppfcl
 from wrapper_meshcat import MeshcatWrapper
 from wrapper_robot import RobotWrapper
 from ocp_panda_reaching import OCPPandaReaching
-from ocp_panda_reaching_obs_single_point import OCPPandaReachingColWithSingleCol
+from ocp_panda_reaching_obs_multiple_points import OCPPandaReachingColWithMultipleCol
 
 from utils import BLUE, YELLOW_FULL
 
@@ -42,8 +42,8 @@ TARGET_POSE.translation = np.array([0, -0.4, 1.5])
 ### CREATING THE OBSTACLE
 OBSTACLE_RADIUS = 1.5e-1
 OBSTACLE_POSE = pin.SE3.Identity()
-OBSTACLE_POSE.translation = np.array([0.25, -0.425, 1.5])
-OBSTACLE = hppfcl.Capsule(OBSTACLE_RADIUS, OBSTACLE_RADIUS)
+OBSTACLE_POSE.translation = np.array([0.25, -0.50, 1.5])
+OBSTACLE = hppfcl.Sphere(OBSTACLE_RADIUS)
 OBSTACLE_GEOM_OBJECT = pin.GeometryObject(
     "obstacle",
     rmodel.getFrameId("universe"),
@@ -60,8 +60,13 @@ INITIAL_CONFIG = pin.neutral(rmodel)
 
 ### ADDING THE COLLISION PAIR BETWEEN A LINK OF THE ROBOT & THE OBSTACLE
 cmodel.geometryObjects[cmodel.getGeometryId("panda2_leftfinger_3")].meshColor = YELLOW_FULL
+cmodel.geometryObjects[cmodel.getGeometryId("panda2_link5_capsule28")].meshColor = YELLOW_FULL
+
 cmodel.addCollisionPair(
     pin.CollisionPair(cmodel.getGeometryId("panda2_leftfinger_3"), IG_OBSTACLE)
+)
+cmodel.addCollisionPair(
+    pin.CollisionPair(cmodel.getGeometryId("panda2_link5_capsule28"), IG_OBSTACLE)
 )
 cdata = cmodel.createData()
 
@@ -104,7 +109,7 @@ for xs in ddp.xs:
     time.sleep(1e-3)
 
 ### CREATING THE PROBLEM WITH WARM START
-problem = OCPPandaReachingColWithSingleCol(
+problem = OCPPandaReachingColWithMultipleCol(
     rmodel,
     cmodel,
     TARGET_POSE,
@@ -116,7 +121,7 @@ problem = OCPPandaReachingColWithSingleCol(
     WEIGHT_GRIPPER_POSE=100,
     WEIGHT_xREG=1e-2,
     WEIGHT_uREG=1e-4,
-    SAFETY_THRESHOLD=1e-2
+    SAFETY_THRESHOLD=1e-3
 )
 ddp = problem()
 

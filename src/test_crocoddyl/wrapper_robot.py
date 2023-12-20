@@ -128,8 +128,8 @@ class RobotWrapper:
         # Replacing the cylinders by capsules
         for i, geometry_object in enumerate(collision_model_reduced_copy.geometryObjects):
             
-            # if isinstance(geometry_object.geometry, hppfcl.Sphere):
-            #     self._collision_model_reduced.removeGeometryObject(geometry_object.name)
+            if isinstance(geometry_object.geometry, hppfcl.Sphere):
+                self._collision_model_reduced.removeGeometryObject(geometry_object.name)
             # Only selecting the cylinders
             if isinstance(geometry_object.geometry, hppfcl.Cylinder):
                 capsule = pin.GeometryObject(
@@ -141,8 +141,8 @@ class RobotWrapper:
                 )
                 capsule.meshColor = RED
                 self._collision_model_reduced.addGeometryObject(capsule)
+                self._collision_model_reduced.removeGeometryObject(geometry_object.name)
 
-        
         # Removing the geometry objects that aren't Capsule / Box and disabling the collisions for the finger and the camera
         for geometry_object in self._collision_model_reduced.geometryObjects:
             # Disabling the collisions for the fingers
