@@ -177,7 +177,6 @@ class ResidualCollision(crocoddyl.ResidualModelAbstract):
             self.q,
         )
 
-        pin.computeJointJacobians(self._pinocchio, data.shared.pinocchio, self.q)
         # Computing the pinocchio jacobians
         pin.computeJointJacobians(self._pinocchio, data.shared.pinocchio, self.q)
 
