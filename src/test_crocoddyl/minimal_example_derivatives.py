@@ -1,10 +1,12 @@
 from os.path import dirname, join, abspath
 import numpy as np
-import matplotlib.pyplot as plt
 import hppfcl
 
 import pinocchio as pin
-import pydiffcol
+try:
+    import pydiffcol
+except:
+    print("pydiffcol not imported")
 
 
 ### HELPERS
@@ -16,6 +18,19 @@ WITH_DISPLAY = False
 
 
 def select_strategy(strat: str, verbose: bool = False):
+    """Strategy selection for diffcol. The options are chosen empirically and mostly copied from Louis' examples.
+
+    Args:
+        strat (str): strategy of the computation of the derivatives.
+        verbose (bool, optional): Defaults to False.
+
+    Raises:
+        NotImplementedError: Wrong choice of derivatives
+
+    Returns:
+        req: pydiffcol.DistanceRequest.
+        req_diff: pydiffcol.DerivativeRequest.
+    """
     req = hppfcl.DistanceRequest()
     req.gjk_initial_guess = hppfcl.GJKInitialGuess.CachedGuess
     req.gjk_convergence_criterion = hppfcl.GJKConvergenceCriterion.DualityGap
@@ -90,7 +105,7 @@ def wrapper_robot():
 
 
 def dist(q):
-    """Computes the distance with diffcol
+    """Computes the distance with hppfcl. Updates the hppfcl.distanceResult as well with hppfcl.distanceResult.getNearestPoint1() for instance.
 
     Args:
         q (np.ndarray): Configuration of the robot
@@ -105,14 +120,24 @@ def dist(q):
     shape1_placement = cdata.oMg[shape1_id]
     shape2_placement = cdata.oMg[shape2_id]
 
-    distance = pydiffcol.distance(
-        shape1.geometry,
-        shape1_placement,
-        shape2.geometry,
-        shape2_placement,
-        req,
-        res,
-    )
+    try:
+        distance = pydiffcol.distance(
+            shape1.geometry,
+            shape1_placement,
+            shape2.geometry,
+            shape2_placement,
+            req,
+            res,
+        )
+    except:
+        distance = hppfcl.distance(
+            shape1.geometry,
+            shape1_placement,
+            shape2.geometry,
+            shape2_placement,
+            req,
+            res,
+        )
     return distance
 
 
@@ -135,8 +160,8 @@ def dist_numdiff(q):
 
 
 def ddist(q):
-    """Diffcol derivative of the dist function with regards to .
-
+    """Diffcol derivative of the dist function with regards to the transformation of the closest point belonging to shape 1.
+        The LOCAL frame is used instead of LOCAL_WORLD_ALIGNED. The choice was empyrical. Chosing LOCAL gives the same result as the other derivatives methods.
     Args:
         q (np.ndarray): Configuration of the robot
 
@@ -171,6 +196,13 @@ def ddist(q):
 
 
 def derivative_distance_sphere_sphere_florent():
+    """Distance derivatives found with the demonstration of florent : https://homepages.laas.fr/florent/publi/05icra1.pdf
+     The derivative is computed page 3 and the result is :
+     $\frac{\partial d_{ij}}{\partial q} (q) = \frac{( R(q) - O(q))^{T} }{ || O(q) - R(q) ||} \frac{\partial R_{\in body}}{\partial q}$
+
+    Returns:
+        distance derivative: distance derivative between shape 1 & shape 2
+    """
     pin.forwardKinematics(rmodel, rdata, q)
     pin.computeJointJacobians(rmodel, rdata, q)
     pin.updateGeometryPlacements(
@@ -207,6 +239,18 @@ def derivative_distance_sphere_sphere_florent():
 
 
 def derivative_distance_sphere_sphere_analytics():
+    """Distance derivatives found with the analytical demonstration of the derivative of distance with regards to the translation of the closest point of the shape 1.
+    Let S1 & S2 spheres of radius r1 & r2. As spheres are invariable by rotations, let's only work with translations t1 & t2 here. t1 = (x1,x2,x3), where xi $\in$ R3 & t2 = (y1,y2,y3).
+    The distance can be written as : $     d (S_1 + t_1, S_2 + t_2) = || t_2 - t_1 || - (r_1 + r_2) $.
+    Hence, the derivative : $     \frac{\partial d}{\partial t_1} (S_1 + t_1, S_2 + t_2) = \frac{\partial}{\partial t_1} || t_2 - t_1 || $, 
+
+    The distance can also be written as : $   d (S_1 + t_1, S_2 + t_2) = \sqrt{\sum ^3 _{i = 1} (y_i - x_i)^{2}} $.
+    Now, it's only a simple vector derivatives.
+    Hence :   $\frac{\partial d}{\partial t_1} (S_1 + t_1, S_2 + t_2) = \sum ^{3}_{i = 1} \frac{(x_i - y_i) e_i }{d(S_1 + t_1, S_2 + t_2)} $ where $ (e_1,e_2,e_3)$ base of $R^3$.
+        
+    Returns:
+        distance derivative: distance derivative between shape 1 & shape 2
+    """
     pin.forwardKinematics(rmodel, rdata, q)
     pin.computeJointJacobians(rmodel, rdata, q)
     pin.updateGeometryPlacements(
@@ -248,7 +292,7 @@ def derivative_distance_sphere_sphere_analytics():
 
 
 def dist_numdiff(q):
-    """Finite derivative of the dist function.
+    """Finite derivative of the dist function with regards to the configuration vector of the robot.
 
     Args:
         q (np.ndarray): Configuration of the robot
@@ -268,23 +312,6 @@ def dist_numdiff(q):
 if __name__ == "__main__":
     # Loading the robot
     rmodel, vmodel, cmodel = wrapper_robot()
-
-    ### CREATING THE OBSTACLE
-    OBSTACLE_RADIUS = 1.5e-1
-    OBSTACLE_POSE = pin.SE3.Identity()
-    OBSTACLE_POSE.translation = np.array([0.25, -0.625, 1.5])
-    # OBSTACLE = hppfcl.Capsule(OBSTACLE_RADIUS, OBSTACLE_RADIUS)
-    OBSTACLE = hppfcl.Sphere(OBSTACLE_RADIUS)
-    OBSTACLE_GEOM_OBJECT = pin.GeometryObject(
-        "obstacle",
-        rmodel.getFrameId("universe"),
-        rmodel.frames[rmodel.getFrameId("universe")].parentJoint,
-        OBSTACLE,
-        OBSTACLE_POSE,
-    )
-
-    IG_OBSTACLE = cmodel.addGeometryObject(OBSTACLE_GEOM_OBJECT)
-
     rdata = rmodel.createData()
     cdata = cmodel.createData()
 
@@ -299,7 +326,7 @@ if __name__ == "__main__":
     pin.updateGeometryPlacements(rmodel, rdata, cmodel, cdata, q)
 
     # Creating the shapes for the collision detection.
-    shape1_id = cmodel.getGeometryId("panda2_link5_sc_4")
+    shape1_id = cmodel.getGeometryId("panda2_link5_sc_2")
 
     # Coloring the sphere
     shape1 = cmodel.geometryObjects[shape1_id]
@@ -309,7 +336,7 @@ if __name__ == "__main__":
     shape1_placement = cdata.oMg[shape1_id]
 
     # Doing the same for the second shape.
-    shape2_id = cmodel.getGeometryId("obstacle")
+    shape2_id = cmodel.getGeometryId("panda2_link2_sc_2")
 
     # Coloring the sphere
     shape2 = cmodel.geometryObjects[shape2_id]
@@ -319,25 +346,36 @@ if __name__ == "__main__":
     shape2_placement = cdata.oMg[shape2_id]
 
     # Distance & Derivative results from diffcol
-    req, req_diff = select_strategy("finite_differences")
-    res = pydiffcol.DistanceResult()
-    res_diff = pydiffcol.DerivativeResult()
+    try:
+        req, req_diff = select_strategy("finite_differences")
+        res = pydiffcol.DistanceResult()
+        res_diff = pydiffcol.DerivativeResult()
+    except:
+        req = hppfcl.DistanceRequest()
+        res = hppfcl.DistanceResult()
 
     # Computing the distance between shape 1 & shape 2 at q0 & comparing with the distance anatically computed
-    print(f"dist(q) : {round(dist(q),6)}")
+    print(f"dist(q) : {dist(q):.6f}")
     dist2 = np.linalg.norm(shape1_placement.translation - shape2_placement.translation)
     print(
         f"np.linalg.norm(dist2) : {dist2 - shape1.geometry.radius - shape2.geometry.radius:.6f}"
     )
 
-    deriv_diffcol = ddist(q)
+    try:
+        deriv_diffcol = ddist(q)
+    except:
+        print("As pydiffcol is not imported, the derivatives from diffcol won't be computed.")
+        
     deriv_ana = derivative_distance_sphere_sphere_analytics()
     deriv_florent = derivative_distance_sphere_sphere_florent()
     deriv_numdiff = dist_numdiff(q)
     np.set_printoptions(precision=3)
-    print(f"deriv diffcol : {deriv_diffcol}")
+    
+    try:
+        print(f"deriv diffcol : {deriv_diffcol}")
+    except:
+        pass
     print(f"deriv ana: {deriv_ana}")
-    # print(f"deriv2 : {deriv2}")
     print(f"deriv florent: {deriv_florent}")
     print(f"numdif : {deriv_numdiff}")
 
