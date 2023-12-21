@@ -28,7 +28,7 @@ def select_strategy(strat: str, verbose: bool = False):
     req_diff = pydiffcol.DerivativeRequest()
     req_diff.warm_start = np.array([1.0, 0.0, 0.0])
     req_diff.support_hint = np.array([0, 0], dtype=np.int32)
-    req_diff.use_analytic_hessians = False
+    req_diff.use_analytic_hessians = True
 
     if strat == "finite_differences":
         req_diff.derivative_type = pydiffcol.DerivativeType.FiniteDifferences
@@ -106,9 +106,9 @@ def dist(q):
     shape2_placement = cdata.oMg[shape2_id]
 
     distance = pydiffcol.distance(
-        shape1_geom,
+        shape1.geometry,
         shape1_placement,
-        shape2_geom,
+        shape2.geometry,
         shape2_placement,
         req,
         res,
@@ -134,7 +134,7 @@ def dist_numdiff(q):
     return j_diff
 
 
-def ddist(q, FRAME=pin.LOCAL):
+def ddist(q):
     """Diffcol derivative of the dist function with regards to .
 
     Args:
@@ -150,9 +150,9 @@ def ddist(q, FRAME=pin.LOCAL):
     pin.computeJointJacobians(rmodel, rdata, q)
 
     pydiffcol.distance_derivatives(
-        shape1_geom,
+        shape1.geometry,
         shape1_placement,
-        shape2_geom,
+        shape2.geometry,
         shape2_placement,
         req,
         res,
@@ -165,12 +165,12 @@ def ddist(q, FRAME=pin.LOCAL):
         rdata,
         q,
         shape1.parentFrame,
-        FRAME,
+        pin.LOCAL,
     )
     return np.dot(res_diff.ddist_dM1, jacobian)
 
 
-def derivative_distance_sphere_sphere(FRAME=pin.LOCAL):
+def derivative_distance_sphere_sphere_florent():
     pin.forwardKinematics(rmodel, rdata, q)
     pin.computeJointJacobians(rmodel, rdata, q)
     pin.updateGeometryPlacements(
@@ -185,14 +185,14 @@ def derivative_distance_sphere_sphere(FRAME=pin.LOCAL):
         rdata,
         q,
         shape1.parentFrame,
-        FRAME,
+        pin.LOCAL_WORLD_ALIGNED,
     )
 
     # Computing the distance
     distance = hppfcl.distance(
-        shape1_geom,
+        shape1.geometry,
         shape1_placement,
-        shape2_geom,
+        shape2.geometry,
         shape2_placement,
         req,
         res,
@@ -206,7 +206,7 @@ def derivative_distance_sphere_sphere(FRAME=pin.LOCAL):
     return deriv
 
 
-def derivative_distance_sphere_sphere3(FRAME=pin.LOCAL):
+def derivative_distance_sphere_sphere_analytics():
     pin.forwardKinematics(rmodel, rdata, q)
     pin.computeJointJacobians(rmodel, rdata, q)
     pin.updateGeometryPlacements(
@@ -221,14 +221,14 @@ def derivative_distance_sphere_sphere3(FRAME=pin.LOCAL):
         rdata,
         q,
         shape1.parentFrame,
-        FRAME,
+        pin.LOCAL_WORLD_ALIGNED,
     )
 
     # Computing the distance
     distance = hppfcl.distance(
-        shape1_geom,
+        shape1.geometry,
         shape1_placement,
-        shape2_geom,
+        shape2.geometry,
         shape2_placement,
         req,
         res,
@@ -268,12 +268,7 @@ def dist_numdiff(q):
 if __name__ == "__main__":
     # Loading the robot
     rmodel, vmodel, cmodel = wrapper_robot()
-    # target = pin.SE3.Identity()
-    # target.translation = np.array([1,1,1])
-    # rmodel, cmodel = create_robot(target)
-    # Creating the datas model
-    
-        
+
     ### CREATING THE OBSTACLE
     OBSTACLE_RADIUS = 1.5e-1
     OBSTACLE_POSE = pin.SE3.Identity()
@@ -290,54 +285,75 @@ if __name__ == "__main__":
 
     IG_OBSTACLE = cmodel.addGeometryObject(OBSTACLE_GEOM_OBJECT)
 
-    
     rdata = rmodel.createData()
     cdata = cmodel.createData()
 
     # Initial configuration
-    q0 = pin.neutral(rmodel)
-    q = np.array([1,1,1,1,1,1,1])
-    # q = pin.neutral(rmodel)
-
+    q = np.array([1, 1, 1, 1, 1, 1, 1])
+    q = pin.randomConfiguration(rmodel)
     # Number of joints
     nq = rmodel.nq
 
     # Updating the models
-    pin.framesForwardKinematics(rmodel, rdata, q0)
-    pin.updateGeometryPlacements(rmodel, rdata, cmodel, cdata, q0)
+    pin.framesForwardKinematics(rmodel, rdata, q)
+    pin.updateGeometryPlacements(rmodel, rdata, cmodel, cdata, q)
 
     # Creating the shapes for the collision detection.
     shape1_id = cmodel.getGeometryId("panda2_link5_sc_4")
-
-    # Making sure the shape exists
-    assert shape1_id <= len(cmodel.geometryObjects) -1 
 
     # Coloring the sphere
     shape1 = cmodel.geometryObjects[shape1_id]
     shape1.meshColor = BLUE_FULL
 
-    # Getting the geometry of the shape 1
-    shape1_geom = shape1.geometry
-
-    # Making sure the shape is a sphere
-    assert isinstance(shape1_geom, hppfcl.Sphere)
-
     # Getting its pose in the world reference
     shape1_placement = cdata.oMg[shape1_id]
 
     # Doing the same for the second shape.
-    shape2_id = cmodel.getGeometryId("obstacle") 
-    assert shape2_id <= len(cmodel.geometryObjects) -1
+    shape2_id = cmodel.getGeometryId("obstacle")
 
     # Coloring the sphere
     shape2 = cmodel.geometryObjects[shape2_id]
     shape2.meshColor = YELLOW_FULL
 
-    shape2_geom = shape2.geometry
-    assert isinstance(shape2_geom, hppfcl.Sphere)
-
     # Getting its pose in the world reference
     shape2_placement = cdata.oMg[shape2_id]
+
+    # Distance & Derivative results from diffcol
+    req, req_diff = select_strategy("finite_differences")
+    res = pydiffcol.DistanceResult()
+    res_diff = pydiffcol.DerivativeResult()
+
+    # Computing the distance between shape 1 & shape 2 at q0 & comparing with the distance anatically computed
+    print(f"dist(q) : {round(dist(q),6)}")
+    dist2 = np.linalg.norm(shape1_placement.translation - shape2_placement.translation)
+    print(
+        f"np.linalg.norm(dist2) : {dist2 - shape1.geometry.radius - shape2.geometry.radius:.6f}"
+    )
+
+    deriv_diffcol = ddist(q)
+    deriv_ana = derivative_distance_sphere_sphere_analytics()
+    deriv_florent = derivative_distance_sphere_sphere_florent()
+    deriv_numdiff = dist_numdiff(q)
+    np.set_printoptions(precision=3)
+    print(f"deriv diffcol : {deriv_diffcol}")
+    print(f"deriv ana: {deriv_ana}")
+    # print(f"deriv2 : {deriv2}")
+    print(f"deriv florent: {deriv_florent}")
+    print(f"numdif : {deriv_numdiff}")
+
+    ######### TESTING
+    def test():
+        # Making sure the shapes exist
+        assert shape1_id <= len(cmodel.geometryObjects) - 1
+        assert shape2_id <= len(cmodel.geometryObjects) - 1
+
+        # Making sure the shapes are spheres
+        assert isinstance(shape1.geometry, hppfcl.Sphere)
+        assert isinstance(shape2.geometry, hppfcl.Sphere)
+
+    test()
+
+    ######### VIZ
 
     if WITH_DISPLAY:
         from wrapper_meshcat import MeshcatWrapper
@@ -350,139 +366,4 @@ if __name__ == "__main__":
             robot_visual_model=cmodel,
         )
         # Displaying the initial
-        vis.display(q0)
-
-    # Distance & Derivative results from diffcol
-    req, req_diff = select_strategy("finite_differences")
-    res = pydiffcol.DistanceResult()
-    res_diff = pydiffcol.DerivativeResult()
-
-    # Computing the distance between shape 1 & shape 2 at q0 & comparing with the distance anatically computed
-    print(f"dist(q) : {round(dist(q0),6)}")
-    dist2 = np.linalg.norm(shape1_placement.translation - shape2_placement.translation)
-    print(
-        f"np.linalg.norm(dist2) : {dist2 - shape1_geom.radius - shape2_geom.radius:.6f}"
-    )
-
-    deriv0 = ddist(q)
-    deriv = derivative_distance_sphere_sphere()
-    deriv3 = derivative_distance_sphere_sphere3()
-    deriv_numdiff = dist_numdiff(q)
-    np.set_printoptions(precision=3)
-    print(f"deriv diffcol : {deriv0}")
-    print(f"deriv : {deriv}")
-    # print(f"deriv2 : {deriv2}")
-    print(f"deriv3 : {deriv3}")
-    print(f"numdif : {deriv_numdiff}")
-
-    # Varying k from -pi to pi for a single joint to explore the derivatives of the distance through its full rotation.
-    distance_list = []
-    ddist_list_local = []
-    ddist_numdiff_list_local = []
-    ddist_list_florent_local = []
-    ddist_list_analytical_local = []
-
-    ddist_list_lwa = []
-    ddist_numdiff_list_lwa = []
-    ddist_list_florent_lwa = []
-    ddist_list_analytical_lwa = []
-
-    ddist_list_w = []
-    ddist_numdiff_list_w = []
-    ddist_list_florent_w = []
-    ddist_list_analytical_w = []
-
-    theta = np.linspace(-np.pi, np.pi, 1000)
-    for k in theta:
-        q = np.array([0,0,0, k,0,0,0])
-        d = dist(q)
-        FRAME = pin.LOCAL
-        distance_list.append(d)
-        ddist_diffcol = ddist(q, pin.LOCAL_WORLD_ALIGNED)
-        ddist_numdiff = dist_numdiff(q)
-        ddist_ana = derivative_distance_sphere_sphere3(FRAME)
-        ddist_florent = derivative_distance_sphere_sphere(FRAME)
-        ddist_list_local.append(ddist_diffcol)
-        ddist_numdiff_list_local.append(ddist_numdiff)
-        ddist_list_analytical_local.append(ddist_ana)
-        ddist_list_florent_local.append(ddist_florent)
-
-        FRAME = pin.LOCAL_WORLD_ALIGNED
-        ddist_diffcol = ddist(q, pin.LOCAL)
-        ddist_numdiff = dist_numdiff(q)
-        ddist_ana = derivative_distance_sphere_sphere3(FRAME)
-        ddist_florent = derivative_distance_sphere_sphere(FRAME)
-        ddist_list_lwa.append(ddist_diffcol)
-        ddist_numdiff_list_lwa.append(ddist_numdiff)
-        ddist_list_analytical_lwa.append(ddist_ana)
-        ddist_list_florent_lwa.append(ddist_florent)
-
-        if WITH_DISPLAY:
-            vis.display(q)
-
-    plots = [331, 332, 333, 334, 335, 336, 337]
-    plt.figure()
-
-    for k in range(nq):
-        plt.subplot(plots[k])
-        plt.plot(
-            theta,
-            np.array(ddist_list_local)[:, k],
-            label="diffcol_local",
-            marker=".",
-            markersize=5,
-        )
-        plt.plot(theta, np.array(ddist_numdiff_list_local)[:, k], "--", label="numdiff")
-        plt.plot(
-            theta,
-            np.array(ddist_list_florent_local)[:, k],
-            label="florent_local",
-            marker=".",
-            markersize=5,
-        )
-        plt.plot(
-            theta,
-            np.array(ddist_list_analytical_local)[:, k],
-            "--",
-            label="analytical_local",
-        )
-        plt.title("joint" + str(k))
-        plt.ylabel(f"Distance derivative w.r.t. joint {k}")
-    plt.legend()
-    plt.suptitle(
-        f"pin.LOCAL"
-    )
-    plt.figure()
-
-    for k in range(nq):
-        plt.subplot(plots[k])
-        plt.plot(
-            theta,
-            np.array(ddist_list_lwa)[:, k],
-            label="diffcol_lwa",
-            marker=".",
-            markersize=5,
-        )
-        plt.plot(theta, np.array(ddist_numdiff_list_local)[:, k], "--", label="numdiff")
-        plt.plot(
-            theta,
-            np.array(ddist_list_florent_lwa)[:, k],
-            label="florent_lwa",
-            marker=".",
-            markersize=5,
-        )
-        plt.plot(
-            theta,
-            np.array(ddist_list_analytical_lwa)[:, k],
-            "--",
-            label="analytical_lwa",
-        )
-
-        plt.title("joint" + str(k))
-        plt.ylabel(f"Distance derivative w.r.t. joint {k}")
-    plt.legend()
-
-    plt.suptitle(
-        f"LWA"    )
-
-    plt.show()
+        vis.display(q)
