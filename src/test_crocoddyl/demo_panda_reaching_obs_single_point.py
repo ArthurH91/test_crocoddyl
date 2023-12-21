@@ -43,7 +43,8 @@ TARGET_POSE.translation = np.array([0, -0.4, 1.5])
 OBSTACLE_RADIUS = 1.5e-1
 OBSTACLE_POSE = pin.SE3.Identity()
 OBSTACLE_POSE.translation = np.array([0.25, -0.425, 1.5])
-OBSTACLE = hppfcl.Capsule(OBSTACLE_RADIUS, OBSTACLE_RADIUS)
+# OBSTACLE = hppfcl.Capsule(OBSTACLE_RADIUS, OBSTACLE_RADIUS)
+OBSTACLE = hppfcl.Sphere(OBSTACLE_RADIUS)
 OBSTACLE_GEOM_OBJECT = pin.GeometryObject(
     "obstacle",
     rmodel.getFrameId("universe"),
@@ -59,9 +60,9 @@ IG_OBSTACLE = cmodel.addGeometryObject(OBSTACLE_GEOM_OBJECT)
 INITIAL_CONFIG = pin.neutral(rmodel)
 
 ### ADDING THE COLLISION PAIR BETWEEN A LINK OF THE ROBOT & THE OBSTACLE
-cmodel.geometryObjects[cmodel.getGeometryId("panda2_leftfinger_3")].meshColor = YELLOW_FULL
+cmodel.geometryObjects[cmodel.getGeometryId("panda2_link5_capsule28")].meshColor = YELLOW_FULL
 cmodel.addCollisionPair(
-    pin.CollisionPair(cmodel.getGeometryId("panda2_leftfinger_3"), IG_OBSTACLE)
+    pin.CollisionPair(cmodel.getGeometryId("panda2_link5_capsule28"), IG_OBSTACLE)
 )
 cdata = cmodel.createData()
 

@@ -49,42 +49,68 @@ def select_strategy(strat: str, verbose: bool = False):
     return req, req_diff
 
 
-def wrapper_robot():
-    """Load the robot from the models folder.
+def create_robot(M_target=pin.SE3.Identity()):
+    rmodel = pin.Model()
+    gmodel = pin.GeometryModel()
+    r1 = 0.5  # Radii of the sphere
 
-    Returns:
-        rmodel, vmodel, cmodel: Robot model, visual model & collision model of the robot.
-    """
-    ### LOADING THE ROBOT
-    pinocchio_model_dir = join(dirname(dirname(str(abspath(__file__)))), "models")
-    model_path = join(pinocchio_model_dir, "franka_description/robots")
-    mesh_dir = pinocchio_model_dir
-    urdf_filename = "franka2.urdf"
-    urdf_model_path = join(join(model_path, "panda"), urdf_filename)
-    srdf_model_path = model_path + "/panda/demo.srdf"
 
-    rmodel, collision_model, visual_model = pin.buildModelsFromUrdf(
-        urdf_model_path, mesh_dir, pin.JointModelFreeFlyer()
-    )
+    # Creation of the joint models variables used to setup the robot
 
-    q0 = pin.neutral(rmodel)
-    jointsToLockIDs = [1, 9, 10]
+    revolut_joint_y = pin.JointModelRY()
+    revolut_joint_z = pin.JointModelRZ()
+    revolut_joint_x = pin.JointModelRX()
 
-    geom_models = [visual_model, collision_model]
-    model_reduced, geometric_models_reduced = pin.buildReducedModel(
-        rmodel,
-        list_of_geom_models=geom_models,
-        list_of_joints_to_lock=jointsToLockIDs,
-        reference_configuration=q0,
-    )
+    # Id of the universe
+    joint_universe = rmodel.getJointId("universe")
 
-    visual_model_reduced, collision_model_reduced = (
-        geometric_models_reduced[0],
-        geometric_models_reduced[1],
-    )
+    # Creation of the robot
 
-    return model_reduced, visual_model_reduced, collision_model_reduced
+    # Creation of the joint 1 (a revolut around the z one)
+    Mj1 = pin.SE3.Identity()  # Pose of the joint in the universe
+    joint1_id = rmodel.addJoint(joint_universe, revolut_joint_z, Mj1, "joint1")
+    
+    # Creation of the frame F1
+    joint1_frame = pin.Frame("joint1_frame", joint1_id, pin.SE3.Identity(), pin.BODY)
+    joint1_frame_id = rmodel.addFrame(joint1_frame, False)
+    
+    # Creation of the shape
+    joint1_shape = hppfcl.Sphere(r1)
+    joint1_geom = pin.GeometryObject(
+        "joint1_geom", joint1_id, joint1_frame_id, Mj1, joint1_shape)
+    id_joint1_geom = gmodel.addGeometryObject(joint1_geom)
+    
+    
+    # Creation of the joint 2 (a revolut one around the y axis)
+    Mj2 = pin.SE3.Identity()
+    Mj2.translation = np.array([0, 0, r1])
+    
+    joint2_id = rmodel.addJoint(joint1_id, revolut_joint_y, Mj2, "joint2")
 
+    # Creation of the frame F2
+    joint2_frame = pin.Frame("joint2_frame", joint2_id, Mj2, pin.BODY)
+    joint2_frame_id = rmodel.addFrame(joint2_frame, False)
+
+    # Creation of the shape
+    joint2_shape = hppfcl.Sphere(r1)
+    joint2_geom = pin.GeometryObject(
+        "joint2_geom", joint2_id, joint2_frame_id, Mj2, joint2_shape)
+    id_joint2_geom = gmodel.addGeometryObject(joint2_geom)
+
+    # Creation of the frame for the target object
+
+    target_frame = pin.Frame("target", rmodel.getJointId(
+        "universe"), M_target, pin.BODY)
+    target = rmodel.addFrame(target_frame, False)
+
+    # Creation of the shape of the target
+    T3 = rmodel.frames[target].placement
+    target_shape = hppfcl.Sphere(r1)
+    target_geom = pin.GeometryObject(
+        "target_geom", rmodel.getJointId("universe"), target, T3, target_shape)
+    id_target_geom = gmodel.addGeometryObject(target_geom)
+
+    return rmodel, gmodel
 
 ######################################## DISTANCE & ITS DERIVATIVES COMPUTATION #######################################
 
@@ -271,10 +297,9 @@ def dist_numdiff(q):
 
 if __name__ == "__main__":
     # Loading the robot
-    rmodel, vmodel, cmodel = wrapper_robot()
-    # target = pin.SE3.Identity()
-    # target.translation = np.array([1,1,1])
-    # rmodel, cmodel = create_robot(target)
+    target = pin.SE3.Identity()
+    target.translation = np.array([1,1,1])
+    rmodel, cmodel = create_robot(target)
     # Creating the datas model
     
         
@@ -300,7 +325,7 @@ if __name__ == "__main__":
 
     # Initial configuration
     q0 = pin.neutral(rmodel)
-    q = np.array([1,1,1,1,1,1,1])
+    q = np.array([1,1])
     # q = pin.neutral(rmodel)
 
     # Number of joints
@@ -311,7 +336,7 @@ if __name__ == "__main__":
     pin.updateGeometryPlacements(rmodel, rdata, cmodel, cdata, q0)
 
     # Creating the shapes for the collision detection.
-    shape1_id = cmodel.getGeometryId("panda2_link5_sc_4")
+    shape1_id = cmodel.getGeometryId("joint2_geom")
 
     # Making sure the shape exists
     assert shape1_id <= len(cmodel.geometryObjects) -1 
@@ -330,7 +355,7 @@ if __name__ == "__main__":
     shape1_placement = cdata.oMg[shape1_id]
 
     # Doing the same for the second shape.
-    shape2_id = cmodel.getGeometryId("obstacle") 
+    shape2_id = cmodel.getGeometryId("target_geom") 
     assert shape2_id <= len(cmodel.geometryObjects) -1
 
     # Coloring the sphere
@@ -398,7 +423,7 @@ if __name__ == "__main__":
 
     theta = np.linspace(-np.pi, np.pi, 1000)
     for k in theta:
-        q = np.array([0,0,0, k,0,0,0])
+        q = np.array([0, k])
         d = dist(q)
         FRAME = pin.LOCAL
         distance_list.append(d)
