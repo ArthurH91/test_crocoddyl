@@ -26,7 +26,6 @@
 
 import numpy as np
 import pinocchio as pin
-from pinocchio.visualize import MeshcatVisualizer
 import meshcat
 import example_robot_data as robex
 import hppfcl
@@ -214,14 +213,25 @@ def dist(q):
 
     shape1_placement = cdata.oMg[shape1_id]
     shape2_placement = cdata.oMg[shape2_id]
+    
+    # try:
+    #     distance = hppfcl.distance(
+    #         shape1.geometry,
+    #         shape1_placement,
+    #         shape2.geometry,
+    #         shape2_placement,
+    #         req,
+    #         res,
+    #     )
+
     distance = hppfcl.distance(
         shape1.geometry,
-        shape1_placement,
+        hppfcl.Transform3f(shape1_placement.rotation, shape1_placement.translation),
         shape2.geometry,
-        shape2_placement,
+        hppfcl.Transform3f(shape2_placement.rotation, shape2_placement.translation),
         req,
         res,
-    )
+        )
     return distance
 
 
@@ -320,13 +330,12 @@ def derivative_distance_sphere_sphere_analytics():
     # Computing the distance
     distance = hppfcl.distance(
         shape1.geometry,
-        shape1_placement,
+        hppfcl.Transform3f(shape1_placement.rotation, shape1_placement.translation),
         shape2.geometry,
-        shape2_placement,
+        hppfcl.Transform3f(shape2_placement.rotation, shape2_placement.translation),
         req,
         res,
-    )
-
+        )
     cp1 = res.getNearestPoint1()
     cp2 = res.getNearestPoint2()
 

@@ -120,23 +120,13 @@ def dist(q):
     shape1_placement = cdata.oMg[shape1_id]
     shape2_placement = cdata.oMg[shape2_id]
 
-    try:
-        distance = pydiffcol.distance(
-            shape1.geometry,
-            shape1_placement,
-            shape2.geometry,
-            shape2_placement,
-            req,
-            res,
-        )
-    except:
-        distance = hppfcl.distance(
-            shape1.geometry,
-            shape1_placement,
-            shape2.geometry,
-            shape2_placement,
-            req,
-            res,
+    distance = hppfcl.distance(
+        shape1.geometry,
+        hppfcl.Transform3f(shape1_placement.rotation, shape1_placement.translation),
+        shape2.geometry,
+        hppfcl.Transform3f(shape2_placement.rotation, shape2_placement.translation),
+        req,
+        res,
         )
     return distance
 
@@ -223,12 +213,12 @@ def derivative_distance_sphere_sphere_florent():
     # Computing the distance
     distance = hppfcl.distance(
         shape1.geometry,
-        shape1_placement,
+        hppfcl.Transform3f(shape1_placement.rotation, shape1_placement.translation),
         shape2.geometry,
-        shape2_placement,
+        hppfcl.Transform3f(shape2_placement.rotation, shape2_placement.translation),
         req,
         res,
-    )
+        )
 
     cp1 = res.getNearestPoint1()
     cp2 = res.getNearestPoint2()
@@ -271,13 +261,12 @@ def derivative_distance_sphere_sphere_analytics():
     # Computing the distance
     distance = hppfcl.distance(
         shape1.geometry,
-        shape1_placement,
+        hppfcl.Transform3f(shape1_placement.rotation, shape1_placement.translation),
         shape2.geometry,
-        shape2_placement,
+        hppfcl.Transform3f(shape2_placement.rotation, shape2_placement.translation),
         req,
         res,
-    )
-
+        )
     cp1 = res.getNearestPoint1()
     cp2 = res.getNearestPoint2()
 
@@ -317,7 +306,7 @@ if __name__ == "__main__":
 
     # Initial configuration
     q = np.array([1, 1, 1, 1, 1, 1, 1])
-    q = pin.randomConfiguration(rmodel)
+    # q = pin.randomConfiguration(rmodel)
     # Number of joints
     nq = rmodel.nq
 
