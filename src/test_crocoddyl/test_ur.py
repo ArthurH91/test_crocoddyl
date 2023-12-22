@@ -281,12 +281,12 @@ def derivative_distance_sphere_sphere_florent():
     # Computing the distance
     distance = hppfcl.distance(
         shape1.geometry,
-        shape1_placement,
+        hppfcl.Transform3f(shape1_placement.rotation, shape1_placement.translation),
         shape2.geometry,
-        shape2_placement,
+        hppfcl.Transform3f(shape2_placement.rotation, shape2_placement.translation),
         req,
         res,
-    )
+        )
 
     cp1 = res.getNearestPoint1()
     cp2 = res.getNearestPoint2()
