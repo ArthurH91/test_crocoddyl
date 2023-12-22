@@ -10,7 +10,7 @@ from wrapper_robot import RobotWrapper
 from ocp_panda_reaching import OCPPandaReaching
 from ocp_panda_reaching_obs_single_point import OCPPandaReachingColWithSingleCol
 
-from utils import BLUE, YELLOW_FULL, get_transform
+from ur_robot.utils import BLUE, YELLOW_FULL, get_transform
 
 ### PARAMETERS
 # Number of nodes of the trajectory

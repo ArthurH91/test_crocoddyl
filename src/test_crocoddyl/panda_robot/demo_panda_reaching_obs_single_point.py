@@ -20,7 +20,7 @@ dt = 0.001
 
 
 ### LOADING THE ROBOT
-pinocchio_model_dir = join(dirname(dirname(str(abspath(__file__)))), "models")
+pinocchio_model_dir = join(dirname(dirname(dirname(str(abspath(__file__))))), "models")
 model_path = join(pinocchio_model_dir, "franka_description/robots")
 mesh_dir = pinocchio_model_dir
 urdf_filename = "franka2.urdf"
@@ -43,12 +43,11 @@ TARGET_POSE.translation = np.array([0, -0.4, 1.5])
 OBSTACLE_RADIUS = 1.5e-1
 OBSTACLE_POSE = pin.SE3.Identity()
 OBSTACLE_POSE.translation = np.array([0.25, -0.425, 1.5])
-# OBSTACLE = hppfcl.Capsule(OBSTACLE_RADIUS, OBSTACLE_RADIUS)
 OBSTACLE = hppfcl.Sphere(OBSTACLE_RADIUS)
 OBSTACLE_GEOM_OBJECT = pin.GeometryObject(
     "obstacle",
     rmodel.getFrameId("universe"),
-    rmodel.frames[rmodel.getFrameId("universe")].parentJoint,
+    rmodel.frames[rmodel.getFrameId("universe")].parent,
     OBSTACLE,
     OBSTACLE_POSE,
 )
@@ -60,9 +59,9 @@ IG_OBSTACLE = cmodel.addGeometryObject(OBSTACLE_GEOM_OBJECT)
 INITIAL_CONFIG = pin.neutral(rmodel)
 
 ### ADDING THE COLLISION PAIR BETWEEN A LINK OF THE ROBOT & THE OBSTACLE
-cmodel.geometryObjects[cmodel.getGeometryId("panda2_link5_capsule28")].meshColor = YELLOW_FULL
+cmodel.geometryObjects[cmodel.getGeometryId("panda2_link6_sc_2")].meshColor = YELLOW_FULL
 cmodel.addCollisionPair(
-    pin.CollisionPair(cmodel.getGeometryId("panda2_link5_capsule28"), IG_OBSTACLE)
+    pin.CollisionPair(cmodel.getGeometryId("panda2_link6_sc_2"), IG_OBSTACLE)
 )
 cdata = cmodel.createData()
 
@@ -120,10 +119,6 @@ problem = OCPPandaReachingColWithSingleCol(
     SAFETY_THRESHOLD=1e-2
 )
 ddp = problem()
-
-# XS_init = [x0] * (T+1)
-# US_init = [np.zeros(rmodel.nv)] * T 
-# US_init = ddp.problem.quasiStatic(XS_init[:-1])
 
 # Solving the problem
 ddp.solve(XS_init, US_init)

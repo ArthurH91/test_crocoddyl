@@ -10,7 +10,7 @@ from wrapper_robot import RobotWrapper
 from ocp_panda_reaching import OCPPandaReaching
 from ocp_panda_reaching_obs_multiple_points import OCPPandaReachingColWithMultipleCol
 
-from utils import BLUE, YELLOW_FULL
+from ur_robot.utils import BLUE, YELLOW_FULL
 
 ### PARAMETERS
 # Number of nodes of the trajectory
@@ -59,14 +59,18 @@ IG_OBSTACLE = cmodel.addGeometryObject(OBSTACLE_GEOM_OBJECT)
 INITIAL_CONFIG = pin.neutral(rmodel)
 
 ### ADDING THE COLLISION PAIR BETWEEN A LINK OF THE ROBOT & THE OBSTACLE
-cmodel.geometryObjects[cmodel.getGeometryId("panda2_leftfinger_3")].meshColor = YELLOW_FULL
-cmodel.geometryObjects[cmodel.getGeometryId("panda2_link5_capsule28")].meshColor = YELLOW_FULL
+cmodel.geometryObjects[
+    cmodel.getGeometryId("panda2_leftfinger_3")
+].meshColor = YELLOW_FULL
+cmodel.geometryObjects[
+    cmodel.getGeometryId("panda2_link5_sc_4")
+].meshColor = YELLOW_FULL
 
 cmodel.addCollisionPair(
     pin.CollisionPair(cmodel.getGeometryId("panda2_leftfinger_3"), IG_OBSTACLE)
 )
 cmodel.addCollisionPair(
-    pin.CollisionPair(cmodel.getGeometryId("panda2_link5_capsule28"), IG_OBSTACLE)
+    pin.CollisionPair(cmodel.getGeometryId("panda2_link5_sc_4")), IG_OBSTACLE
 )
 cdata = cmodel.createData()
 
@@ -121,12 +125,12 @@ problem = OCPPandaReachingColWithMultipleCol(
     WEIGHT_GRIPPER_POSE=100,
     WEIGHT_xREG=1e-2,
     WEIGHT_uREG=1e-4,
-    SAFETY_THRESHOLD=1e-3
+    SAFETY_THRESHOLD=1e-3,
 )
 ddp = problem()
 
 # XS_init = [x0] * (T+1)
-# US_init = [np.zeros(rmodel.nv)] * T 
+# US_init = [np.zeros(rmodel.nv)] * T
 # US_init = ddp.problem.quasiStatic(XS_init[:-1])
 
 # Solving the problem

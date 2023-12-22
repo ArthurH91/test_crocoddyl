@@ -42,6 +42,7 @@ class RobotWrapper:
         mesh_dir=None,
         srdf_model_path = None,
         auto_col = False,
+        capsule = False,
     ):
         """Initialize the wrapper with a scaling number of the target and the name of the robot wanted to get unwrapped.
 
@@ -58,6 +59,7 @@ class RobotWrapper:
         self._srdf_model_path = srdf_model_path
         self._color = np.array([249, 136, 126, 255]) / 255
         self._auto_col = auto_col
+        self._capsule = capsule
 
     def __call__(self):
         """Create a robot with a new frame at the end effector position and place a hppfcl: ShapeBase cylinder at this position.
@@ -126,22 +128,23 @@ class RobotWrapper:
         collision_model_reduced_copy = self._collision_model_reduced.copy()
 
         # Replacing the cylinders by capsules
-        for i, geometry_object in enumerate(collision_model_reduced_copy.geometryObjects):
-            
-            if isinstance(geometry_object.geometry, hppfcl.Sphere):
-                self._collision_model_reduced.removeGeometryObject(geometry_object.name)
-            # Only selecting the cylinders
-            if isinstance(geometry_object.geometry, hppfcl.Cylinder):
-                capsule = pin.GeometryObject(
-                geometry_object.name[:-4] + "capsule" + str(i),
-                geometry_object.parentJoint,
-                geometry_object.parentFrame,
-                geometry_object.placement,
-                hppfcl.Capsule(geometry_object.geometry.radius, geometry_object.geometry.halfLength),
-                )
-                capsule.meshColor = RED
-                self._collision_model_reduced.addGeometryObject(capsule)
-                self._collision_model_reduced.removeGeometryObject(geometry_object.name)
+        if self._capsule:
+            for i, geometry_object in enumerate(collision_model_reduced_copy.geometryObjects):
+                
+                if isinstance(geometry_object.geometry, hppfcl.Sphere):
+                    self._collision_model_reduced.removeGeometryObject(geometry_object.name)
+                # Only selecting the cylinders
+                if isinstance(geometry_object.geometry, hppfcl.Cylinder):
+                    capsule = pin.GeometryObject(
+                    geometry_object.name[:-4] + "capsule" + str(i),
+                    geometry_object.parentJoint,
+                    geometry_object.parentFrame,
+                    geometry_object.placement,
+                    hppfcl.Capsule(geometry_object.geometry.radius, geometry_object.geometry.halfLength),
+                    )
+                    capsule.meshColor = RED
+                    self._collision_model_reduced.addGeometryObject(capsule)
+                    self._collision_model_reduced.removeGeometryObject(geometry_object.name)
 
         # Removing the geometry objects that aren't Capsule / Box and disabling the collisions for the finger and the camera
         for geometry_object in self._collision_model_reduced.geometryObjects:

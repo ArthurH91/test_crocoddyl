@@ -4,8 +4,6 @@ import numpy as np
 import time
 import copy
 import matplotlib.pyplot as plt
-from typing import Tuple
-import pydiffcol
 import meshcat
 
 import meshcat.geometry as g
@@ -253,93 +251,93 @@ def generate_reachable_target(
     return rdata.oMf[fid].copy()
 
 
-def plot_end_effector_positions(
-    rmodel: pin.Model,
-    cmodel: pin.Model,
-    rdata: pin.Data,
-    Q: np.ndarray,
-    T: int,
-    nq,
-    TARGET: pin.SE3,
-    TARGET_SHAPE: hppfcl.ShapeBase,
-):
-    px_l, py_l, pz_l = [], [], []
-    resx_l, resy_l, resz_l = [], [], []
+# def plot_end_effector_positions(
+#     rmodel: pin.Model,
+#     cmodel: pin.Model,
+#     rdata: pin.Data,
+#     Q: np.ndarray,
+#     T: int,
+#     nq,
+#     TARGET: pin.SE3,
+#     TARGET_SHAPE: hppfcl.ShapeBase,
+# ):
+#     px_l, py_l, pz_l = [], [], []
+#     resx_l, resy_l, resz_l = [], [], []
 
-    for t in range(T):
-        q_t = get_q_iter_from_Q(Q, t, nq)
-        req = hppfcl.DistanceRequest()
-        res = pydiffcol.DistanceResult()
-        pin.framesForwardKinematics(rmodel, rdata, q_t)
+#     for t in range(T):
+#         q_t = get_q_iter_from_Q(Q, t, nq)
+#         req = hppfcl.DistanceRequest()
+#         res = pydiffcol.DistanceResult()
+#         pin.framesForwardKinematics(rmodel, rdata, q_t)
 
-        endeff_Shape = cmodel.geometryObjects[
-            cmodel.getGeometryId("panda2_link7_sc_5")
-        ].geometry
-        endeff_Transform = rdata.oMf[rmodel.getFrameId("panda2_joint7")]
+#         endeff_Shape = cmodel.geometryObjects[
+#             cmodel.getGeometryId("panda2_link7_sc_5")
+#         ].geometry
+#         endeff_Transform = rdata.oMf[rmodel.getFrameId("panda2_joint7")]
 
-        dist_endeff_target = pydiffcol.distance(
-            endeff_Shape,
-            endeff_Transform,
-            TARGET_SHAPE,
-            TARGET,
-            req,
-            res,
-        )
+#         dist_endeff_target = pydiffcol.distance(
+#             endeff_Shape,
+#             endeff_Transform,
+#             TARGET_SHAPE,
+#             TARGET,
+#             req,
+#             res,
+#         )
 
-        px, py, pz = endeff_Transform.translation
+#         px, py, pz = endeff_Transform.translation
 
-        px_l.append(px)
-        py_l.append(py)
-        pz_l.append(pz)
+#         px_l.append(px)
+#         py_l.append(py)
+#         pz_l.append(pz)
 
-        resx_l.append(res.w[0])
-        resy_l.append(res.w[1])
-        resz_l.append(res.w[2])
+#         resx_l.append(res.w[0])
+#         resy_l.append(res.w[1])
+#         resz_l.append(res.w[2])
 
-    px_t = np.ones(len(px_l)) * TARGET.translation[0]
-    py_t = np.ones(len(py_l)) * TARGET.translation[1]
-    pz_t = np.ones(len(pz_l)) * TARGET.translation[2]
+#     px_t = np.ones(len(px_l)) * TARGET.translation[0]
+#     py_t = np.ones(len(py_l)) * TARGET.translation[1]
+#     pz_t = np.ones(len(pz_l)) * TARGET.translation[2]
 
-    goal = np.zeros((len(resx_l)))
-    plt.figure()
-    plt.subplot(311)
-    plt.plot(px_l, "-o", label="End effector pose")
-    plt.plot(px_t, "-", label="Target position")
-    plt.legend()
-    plt.ylabel("px (m)")
-    plt.subplot(312)
-    plt.plot(py_l, "-o", label="End effector pose")
-    plt.plot(py_t, "-", label="Target position")
-    plt.ylabel("py (m)")
-    plt.legend()
-    plt.subplot(313)
-    plt.plot(pz_l, "-o", label="End effector pose")
-    plt.plot(pz_t, "-", label="Target position")
-    plt.ylabel("pz (m)")
-    plt.xlabel("Iterations")
-    plt.suptitle("3D Position of the end effector through iterations")
-    plt.legend()
+#     goal = np.zeros((len(resx_l)))
+#     plt.figure()
+#     plt.subplot(311)
+#     plt.plot(px_l, "-o", label="End effector pose")
+#     plt.plot(px_t, "-", label="Target position")
+#     plt.legend()
+#     plt.ylabel("px (m)")
+#     plt.subplot(312)
+#     plt.plot(py_l, "-o", label="End effector pose")
+#     plt.plot(py_t, "-", label="Target position")
+#     plt.ylabel("py (m)")
+#     plt.legend()
+#     plt.subplot(313)
+#     plt.plot(pz_l, "-o", label="End effector pose")
+#     plt.plot(pz_t, "-", label="Target position")
+#     plt.ylabel("pz (m)")
+#     plt.xlabel("Iterations")
+#     plt.suptitle("3D Position of the end effector through iterations")
+#     plt.legend()
 
-    plt.figure()
-    plt.subplot(311)
-    plt.plot(resx_l, "-o", label="End effector pose")
-    plt.plot(goal, label="Goal")
-    plt.legend()
-    plt.ylabel("px (m)")
-    plt.subplot(312)
-    plt.plot(resy_l, "-o", label="End effector pose")
-    plt.plot(goal, label="Goal")
-    plt.legend()
-    plt.ylabel("py (m)")
-    plt.subplot(313)
-    plt.plot(resz_l, "-o", label="End effector pose")
-    plt.plot(goal, label="Goal")
-    plt.legend()
-    plt.ylabel("pz (m)")
-    plt.xlabel("Iterations")
-    plt.suptitle(
-        "Vector separating witness points on the target and the end effector through iterations"
-    )
+#     plt.figure()
+#     plt.subplot(311)
+#     plt.plot(resx_l, "-o", label="End effector pose")
+#     plt.plot(goal, label="Goal")
+#     plt.legend()
+#     plt.ylabel("px (m)")
+#     plt.subplot(312)
+#     plt.plot(resy_l, "-o", label="End effector pose")
+#     plt.plot(goal, label="Goal")
+#     plt.legend()
+#     plt.ylabel("py (m)")
+#     plt.subplot(313)
+#     plt.plot(resz_l, "-o", label="End effector pose")
+#     plt.plot(goal, label="Goal")
+#     plt.legend()
+#     plt.ylabel("pz (m)")
+#     plt.xlabel("Iterations")
+#     plt.suptitle(
+#         "Vector separating witness points on the target and the end effector through iterations"
+#     )
 
 
 def RGB_to_hex(RGB):
@@ -389,39 +387,6 @@ def linear_gradient(start_hex, finish_hex="#FFFFFF", n=10):
         RGB_list.append(curr_vector)
 
     return color_dict(RGB_list)
-
-def select_strategy(strat: str, verbose: bool = False) -> Tuple[hppfcl.DistanceRequest, pydiffcol.DerivativeRequest]:
-    req = hppfcl.DistanceRequest()
-    req.gjk_initial_guess = hppfcl.GJKInitialGuess.CachedGuess
-    req.gjk_convergence_criterion = hppfcl.GJKConvergenceCriterion.DualityGap
-    req.gjk_convergence_criterion_type = hppfcl.GJKConvergenceCriterionType.Absolute
-    req.gjk_tolerance = 1e-8
-    req.epa_tolerance = 1e-8
-    req.epa_max_face_num = 1000
-    req.epa_max_vertex_num = 1000
-    req.epa_max_iterations = 1000
-    req_diff = pydiffcol.DerivativeRequest()
-    req_diff.warm_start = np.array([1., 0., 0.])
-    req_diff.support_hint = np.array([0, 0], dtype=np.int32)
-    req_diff.use_analytic_hessians = True
-
-    if strat == "finite_differences":
-        req_diff.derivative_type = pydiffcol.DerivativeType.FiniteDifferences
-    elif strat == "zero_order_gaussian":
-        req_diff.derivative_type = pydiffcol.DerivativeType.ZeroOrderGaussian
-    elif strat == "first_order_gaussian":
-        req_diff.derivative_type = pydiffcol.DerivativeType.FirstOrderGaussian
-    elif strat == "first_order_gumbel":
-        req_diff.derivative_type = pydiffcol.DerivativeType.FirstOrderGumbel
-    else:
-        raise NotImplementedError
-
-    if verbose:
-        print("Strategy: ", req_diff.derivative_type)
-        print("Noise: ", req_diff.noise)
-        print("Num samples: ", req_diff.num_samples)
-
-    return req, req_diff
 
 
 
@@ -490,71 +455,71 @@ def check_limits(rmodel : pin.Model,rdata : pin.Data,  Q : np.ndarray, CHECK_POS
 
     return "Respect the limits of positions ?",pos_respect, "values of the defect :", pos_defect, "positions of the defect", k_pos_defect,"Respect the limits of speed ?", vel_respect,"values of the defect :", vel_defect,"positions of the defect", k_vel_defect,"Respect the limits of accel ?", accel_respect,"values of the defect :", accel_defect,"positions of the defect", accel_defect 
                 
-def check_auto_collisions(rmodel : pin.Model, rdata : pin.Data, cmodel : pin.GeometryModel, cdata : pin.Data):
-    """Check whether the model is in auto-collision.
+# def check_auto_collisions(rmodel : pin.Model, rdata : pin.Data, cmodel : pin.GeometryModel, cdata : pin.Data):
+#     """Check whether the model is in auto-collision.
 
-    Args:
-        rmodel (pin.Model): Pinocchio model of the robot
-        rdata (pin.Data): Data of the model
-        cmodel (pin.GeometryModel): Collision model of the robot
-        cdata (pin.Data): collision data of the robot
-    """
-    pairs_to_avoid = (
-        ("panda2_link0_sc", "panda2_link1_sc"),
-        ("panda2_link0_sc", "panda2_link2_sc"),
-        ("panda2_link1_sc","panda2_link2_sc"),
-        ("panda2_link1_sc","panda2_link3_sc"),
-        ("panda2_link2_sc","panda2_link3_sc"), 
-        ("panda2_link3_sc","panda2_link4_sc"),
-        ("panda2_link3_sc","panda2_link5_sc"),
-        ("panda2_link4_sc","panda2_link5_sc"),
-        ("panda2_link5_sc","panda2_link6_sc"),
-        ("panda2_link5_sc","panda2_link7_sc"),
-        ("panda2_link6_sc","panda2_link7_sc"),
-        ("panda2_link6_sc","panda2_hand_sc"),
-        ("panda2_link7_sc","panda2_hand_sc"),
-        ("panda2_link6_sc","panda2_leftfinger"),
-        ("panda2_link7_sc","panda2_leftfinger"),
-        ("panda2_hand_sc","panda2_leftfinger"),
-        ("panda2_link6_sc","panda2_rightfinger"), 
-        ("panda2_link7_sc","panda2_rightfinger"),
-        ("panda2_hand_sc","panda2_rightfinger"), 
-        ("panda2_leftfinger","panda2_rightfinger"),
-    )
-    oMg_list = []
-    geometry_objects_name = []
-    geometry_objects_geom = [] 
-    collision_pairs = []
-    # Distance request for pydiffcol
-    req, req_diff = select_strategy("first_order_gaussian")
-    res = pydiffcol.DistanceResult()
-    res_diff = pydiffcol.DerivativeResult()
+#     Args:
+#         rmodel (pin.Model): Pinocchio model of the robot
+#         rdata (pin.Data): Data of the model
+#         cmodel (pin.GeometryModel): Collision model of the robot
+#         cdata (pin.Data): collision data of the robot
+#     """
+#     pairs_to_avoid = (
+#         ("panda2_link0_sc", "panda2_link1_sc"),
+#         ("panda2_link0_sc", "panda2_link2_sc"),
+#         ("panda2_link1_sc","panda2_link2_sc"),
+#         ("panda2_link1_sc","panda2_link3_sc"),
+#         ("panda2_link2_sc","panda2_link3_sc"), 
+#         ("panda2_link3_sc","panda2_link4_sc"),
+#         ("panda2_link3_sc","panda2_link5_sc"),
+#         ("panda2_link4_sc","panda2_link5_sc"),
+#         ("panda2_link5_sc","panda2_link6_sc"),
+#         ("panda2_link5_sc","panda2_link7_sc"),
+#         ("panda2_link6_sc","panda2_link7_sc"),
+#         ("panda2_link6_sc","panda2_hand_sc"),
+#         ("panda2_link7_sc","panda2_hand_sc"),
+#         ("panda2_link6_sc","panda2_leftfinger"),
+#         ("panda2_link7_sc","panda2_leftfinger"),
+#         ("panda2_hand_sc","panda2_leftfinger"),
+#         ("panda2_link6_sc","panda2_rightfinger"), 
+#         ("panda2_link7_sc","panda2_rightfinger"),
+#         ("panda2_hand_sc","panda2_rightfinger"), 
+#         ("panda2_leftfinger","panda2_rightfinger"),
+#     )
+#     oMg_list = []
+#     geometry_objects_name = []
+#     geometry_objects_geom = [] 
+#     collision_pairs = []
+#     # Distance request for pydiffcol
+#     req, req_diff = select_strategy("first_order_gaussian")
+#     res = pydiffcol.DistanceResult()
+#     res_diff = pydiffcol.DerivativeResult()
         
-    for oMg, geometry_objects in zip(cdata.oMg, cmodel.geometryObjects):
-        # Only selecting the cylinders
-        if isinstance(geometry_objects.geometry, hppfcl.Cylinder):
-            oMg_list.append(oMg)
-            geometry_objects_name.append(geometry_objects.name[:-2])
-            geometry_objects_geom.append(geometry_objects.geometry)
+#     for oMg, geometry_objects in zip(cdata.oMg, cmodel.geometryObjects):
+#         # Only selecting the cylinders
+#         if isinstance(geometry_objects.geometry, hppfcl.Cylinder):
+#             oMg_list.append(oMg)
+#             geometry_objects_name.append(geometry_objects.name[:-2])
+#             geometry_objects_geom.append(geometry_objects.geometry)
     
-    # Going through all the geometry objects of the collision model
-    for oMg, geometry_objects in zip(cdata.oMg, cmodel.geometryObjects):
-        # Only selecting the cylinders
-        if isinstance(geometry_objects.geometry, hppfcl.Cylinder):
-            for oMg_ref, geometry_objects_name_ref, geometry_objects_geom_ref in zip(oMg_list, geometry_objects_name, geometry_objects_geom):
-                if (geometry_objects_name_ref, geometry_objects.name[:-2]) not in pairs_to_avoid and (geometry_objects.name[:-2],geometry_objects_name_ref ) not in pairs_to_avoid and not geometry_objects_name_ref==geometry_objects.name[:-2]:
-                    dist = pydiffcol.distance(
-                        hppfcl.Capsule(geometry_objects_geom_ref.radius,geometry_objects_geom_ref.halfLength),
-                        oMg_ref,
-                        hppfcl.Capsule(geometry_objects.geometry.radius,geometry_objects.geometry.halfLength),
-                        oMg,
-                        req, 
-                        res
-                    )
-                    if dist < 0:
-                        collision_pairs.append((geometry_objects.name, geometry_objects_name_ref))
+#     # Going through all the geometry objects of the collision model
+#     for oMg, geometry_objects in zip(cdata.oMg, cmodel.geometryObjects):
+#         # Only selecting the cylinders
+#         if isinstance(geometry_objects.geometry, hppfcl.Cylinder):
+#             for oMg_ref, geometry_objects_name_ref, geometry_objects_geom_ref in zip(oMg_list, geometry_objects_name, geometry_objects_geom):
+#                 if (geometry_objects_name_ref, geometry_objects.name[:-2]) not in pairs_to_avoid and (geometry_objects.name[:-2],geometry_objects_name_ref ) not in pairs_to_avoid and not geometry_objects_name_ref==geometry_objects.name[:-2]:
+#                     dist = pydiffcol.distance(
+#                         hppfcl.Capsule(geometry_objects_geom_ref.radius,geometry_objects_geom_ref.halfLength),
+#                         oMg_ref,
+#                         hppfcl.Capsule(geometry_objects.geometry.radius,geometry_objects.geometry.halfLength),
+#                         oMg,
+#                         req, 
+#                         res
+#                     )
+#                     if dist < 0:
+#                         collision_pairs.append((geometry_objects.name, geometry_objects_name_ref))
     
-    return collision_pairs
+#     return collision_pairs
     
 def rgbToHex(color):
     if len(color) == 4:
