@@ -10,7 +10,7 @@ from wrapper_robot2 import RobotWrapper
 from ocp_ur_reaching import OCPURReaching
 from ocp_ur_reaching_obs_single_point import OCPURReachingColWithSingleCol
 
-
+hppfcl.WITH_OCTOMAP = False
 
 BLUE_FULL = np.array([144, 169, 183, 255]) / 255
 

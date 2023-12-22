@@ -5,7 +5,6 @@ from crocoddyl.utils import *
 import hppfcl
 
 
-
 class ResidualCollision(crocoddyl.ResidualModelAbstract):
     """Class computing the residual of the collision constraint. This residual is simply the signed distance between the two closest points of the 2 shapes."""
 
@@ -74,7 +73,7 @@ class ResidualCollision(crocoddyl.ResidualModelAbstract):
         # Checking that shape 1 is belonging to the robot & shape 2 is the obstacle
         assert not "obstacle" in self._shape1.name
         assert "obstacle" in self._shape2.name
-        
+
     def calc(self, data, x, u=None):
         data.r[:] = self.f(data, x[: self._nq])
 
@@ -109,13 +108,17 @@ class ResidualCollision(crocoddyl.ResidualModelAbstract):
         # Computing the distance
         distance = hppfcl.distance(
             self._shape1_geom,
-            hppfcl.Transform3f(self._shape1_placement.rotation, self._shape1_placement.translation),
+            hppfcl.Transform3f(
+                self._shape1_placement.rotation, self._shape1_placement.translation
+            ),
             self._shape2_geom,
-            hppfcl.Transform3f(self._shape2_placement.rotation, self._shape2_placement.translation),
+            hppfcl.Transform3f(
+                self._shape2_placement.rotation, self._shape2_placement.translation
+            ),
             self._req,
             self._res,
         )
-        
+
         return distance
 
     def calcDiff(self, data, x, u=None):
@@ -142,25 +145,24 @@ class ResidualCollision(crocoddyl.ResidualModelAbstract):
 
         # self.calcDiff_numdiff(data, x)
         # J_n = self._J
-        
-        self.calcDiff_florent(data,x)
+
+        self.calcDiff_florent(data, x)
         J_f = self._J
-    
-        # print((np.isclose(J_n, J_f, rtol=1e-4)))
-        # if False in np.isclose(J_n, J_f, rtol=1e-3):
+
+        # if False in (np.isclose(J_n, J_f, rtol=1e-2)):
         #     print(x[:6].tolist())
         #     print(f"dist_numdiff = {self._distance_numdiff}")
         #     print(f"dist_florent = {self._distance_florent}")
-        # # assert False in np.isclose(J_n, J_f, rtol=1e-3)
+        #     # # assert False in np.isclose(J_n, J_f, rtol=1e-3)
         #     print(f"self._J numdiff: {J_n}")
         #     print(f"self._J florent: {J_f}")
+        #     print(f"self._cp1 = {self._cp1}")
+        #     print(f"self._cp2 = {self._cp2}")
 
         # print(f"q : {x[:self._nq]}")
 
         # print("__________________")
         data.Rx[: self._nq] = self._J
-
-
 
     def calcDiff_numdiff(self, data, x):
         j_diff = np.zeros(self._nq)
@@ -173,7 +175,6 @@ class ResidualCollision(crocoddyl.ResidualModelAbstract):
         self._distance_numdiff = fx
 
     def calcDiff_florent(self, data, x):
-        
         # pin.forwardKinematics(self._pinocchio, data.shared.pinocchio, self.q)
         # pin.updateGeometryPlacements(
         #     self._pinocchio,
@@ -182,7 +183,7 @@ class ResidualCollision(crocoddyl.ResidualModelAbstract):
         #     self._geom_data,
         #     self.q,
         # )
-        jacobian = pin.computeFrameJacobian(
+        self._jacobian = pin.computeFrameJacobian(
             self._pinocchio,
             data.shared.pinocchio,
             self.q,
@@ -194,12 +195,16 @@ class ResidualCollision(crocoddyl.ResidualModelAbstract):
         self._distance_florent = self.f(data, x[: self._nq])
         sign = 1
         if self._distance_florent < 0:
-            sign = - 1 
-        cp1 = self._res.getNearestPoint1()
-        cp2 = self._res.getNearestPoint2()
+            sign = -1
+        self._cp1 = self._res.getNearestPoint1()
+        self._cp2 = self._res.getNearestPoint2()
 
-        self._J = sign * (cp1 - cp2).T / self._distance_florent @ jacobian[:3]
-
+        self._J = (
+            1
+            * (self._cp1 - self._cp2).T
+            / self._distance_florent
+            @ self._jacobian[:3]
+        )
 
 
 if __name__ == "__main__":
