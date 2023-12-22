@@ -4,7 +4,6 @@ import matplotlib.pyplot as plt
 import hppfcl
 
 import pinocchio as pin
-import pydiffcol
 
 
 ### HELPERS
@@ -13,41 +12,6 @@ YELLOW_FULL = np.array([1, 1, 0, 1.0])
 BLUE_FULL = np.array([144, 169, 183, 255]) / 255
 
 WITH_DISPLAY = False
-
-
-def select_strategy(strat: str, verbose: bool = False):
-    req = hppfcl.DistanceRequest()
-    req.gjk_initial_guess = hppfcl.GJKInitialGuess.CachedGuess
-    req.gjk_convergence_criterion = hppfcl.GJKConvergenceCriterion.DualityGap
-    req.gjk_convergence_criterion_type = hppfcl.GJKConvergenceCriterionType.Absolute
-    req.gjk_tolerance = 1e-8
-    req.epa_tolerance = 1e-8
-    req.epa_max_face_num = 1000
-    req.epa_max_vertex_num = 1000
-    req.epa_max_iterations = 1000
-    req_diff = pydiffcol.DerivativeRequest()
-    req_diff.warm_start = np.array([1.0, 0.0, 0.0])
-    req_diff.support_hint = np.array([0, 0], dtype=np.int32)
-    req_diff.use_analytic_hessians = False
-
-    if strat == "finite_differences":
-        req_diff.derivative_type = pydiffcol.DerivativeType.FiniteDifferences
-    elif strat == "zero_order_gaussian":
-        req_diff.derivative_type = pydiffcol.DerivativeType.ZeroOrderGaussian
-    elif strat == "first_order_gaussian":
-        req_diff.derivative_type = pydiffcol.DerivativeType.FirstOrderGaussian
-    elif strat == "first_order_gumbel":
-        req_diff.derivative_type = pydiffcol.DerivativeType.FirstOrderGumbel
-    else:
-        raise NotImplementedError
-
-    if verbose:
-        print("Strategy: ", req_diff.derivative_type)
-        print("Noise: ", req_diff.noise)
-        print("Num samples: ", req_diff.num_samples)
-
-    return req, req_diff
-
 
 def wrapper_robot():
     """Load the robot from the models folder.
@@ -105,7 +69,7 @@ def dist(q):
     shape1_placement = cdata.oMg[shape1_id]
     shape2_placement = cdata.oMg[shape2_id]
 
-    distance = pydiffcol.distance(
+    distance = hppfcl.distance(
         shape1_geom,
         shape1_placement,
         shape2_geom,
@@ -132,42 +96,6 @@ def dist_numdiff(q):
         e[i] = 1e-12
         j_diff[i] = (dist(q + e) - dist(q)) / e[i]
     return j_diff
-
-
-def ddist(q, FRAME=pin.LOCAL):
-    """Diffcol derivative of the dist function with regards to .
-
-    Args:
-        q (np.ndarray): Configuration of the robot
-
-    Returns:
-        distance derivative: distance derivative between shape 1 & shape 2
-    """
-
-    # Computing the distance
-    pin.framesForwardKinematics(rmodel, rdata, q)
-    pin.updateGeometryPlacements(rmodel, rdata, cmodel, cdata, q)
-    pin.computeJointJacobians(rmodel, rdata, q)
-
-    pydiffcol.distance_derivatives(
-        shape1_geom,
-        shape1_placement,
-        shape2_geom,
-        shape2_placement,
-        req,
-        res,
-        req_diff,
-        res_diff,
-    )
-
-    jacobian = pin.computeFrameJacobian(
-        rmodel,
-        rdata,
-        q,
-        shape1.parentFrame,
-        FRAME,
-    )
-    return np.dot(res_diff.ddist_dM1, jacobian)
 
 
 def derivative_distance_sphere_sphere(FRAME=pin.LOCAL):
@@ -353,9 +281,8 @@ if __name__ == "__main__":
         vis.display(q0)
 
     # Distance & Derivative results from diffcol
-    req, req_diff = select_strategy("finite_differences")
-    res = pydiffcol.DistanceResult()
-    res_diff = pydiffcol.DerivativeResult()
+    req = hppfcl.DistanceRequest()
+    res = hppfcl.DistanceResult()
 
     # Computing the distance between shape 1 & shape 2 at q0 & comparing with the distance anatically computed
     print(f"dist(q) : {round(dist(q0),6)}")
@@ -364,33 +291,23 @@ if __name__ == "__main__":
         f"np.linalg.norm(dist2) : {dist2 - shape1_geom.radius - shape2_geom.radius:.6f}"
     )
 
-    deriv0 = ddist(q)
     deriv = derivative_distance_sphere_sphere()
     deriv3 = derivative_distance_sphere_sphere3()
     deriv_numdiff = dist_numdiff(q)
     np.set_printoptions(precision=3)
-    print(f"deriv diffcol : {deriv0}")
     print(f"deriv : {deriv}")
-    # print(f"deriv2 : {deriv2}")
     print(f"deriv3 : {deriv3}")
     print(f"numdif : {deriv_numdiff}")
 
     # Varying k from -pi to pi for a single joint to explore the derivatives of the distance through its full rotation.
     distance_list = []
-    ddist_list_local = []
     ddist_numdiff_list_local = []
     ddist_list_florent_local = []
     ddist_list_analytical_local = []
 
-    ddist_list_lwa = []
     ddist_numdiff_list_lwa = []
     ddist_list_florent_lwa = []
     ddist_list_analytical_lwa = []
-
-    ddist_list_w = []
-    ddist_numdiff_list_w = []
-    ddist_list_florent_w = []
-    ddist_list_analytical_w = []
 
     theta = np.linspace(-np.pi, np.pi, 1000)
     for k in theta:
@@ -398,21 +315,17 @@ if __name__ == "__main__":
         d = dist(q)
         FRAME = pin.LOCAL
         distance_list.append(d)
-        ddist_diffcol = ddist(q, pin.LOCAL_WORLD_ALIGNED)
         ddist_numdiff = dist_numdiff(q)
         ddist_ana = derivative_distance_sphere_sphere3(FRAME)
         ddist_florent = derivative_distance_sphere_sphere(FRAME)
-        ddist_list_local.append(ddist_diffcol)
         ddist_numdiff_list_local.append(ddist_numdiff)
         ddist_list_analytical_local.append(ddist_ana)
         ddist_list_florent_local.append(ddist_florent)
 
         FRAME = pin.LOCAL_WORLD_ALIGNED
-        ddist_diffcol = ddist(q, pin.LOCAL)
         ddist_numdiff = dist_numdiff(q)
         ddist_ana = derivative_distance_sphere_sphere3(FRAME)
         ddist_florent = derivative_distance_sphere_sphere(FRAME)
-        ddist_list_lwa.append(ddist_diffcol)
         ddist_numdiff_list_lwa.append(ddist_numdiff)
         ddist_list_analytical_lwa.append(ddist_ana)
         ddist_list_florent_lwa.append(ddist_florent)
@@ -425,13 +338,6 @@ if __name__ == "__main__":
 
     for k in range(nq):
         plt.subplot(plots[k])
-        plt.plot(
-            theta,
-            np.array(ddist_list_local)[:, k],
-            label="diffcol_local",
-            marker=".",
-            markersize=5,
-        )
         plt.plot(theta, np.array(ddist_numdiff_list_local)[:, k], "--", label="numdiff")
         plt.plot(
             theta,
@@ -456,13 +362,6 @@ if __name__ == "__main__":
 
     for k in range(nq):
         plt.subplot(plots[k])
-        plt.plot(
-            theta,
-            np.array(ddist_list_lwa)[:, k],
-            label="diffcol_lwa",
-            marker=".",
-            markersize=5,
-        )
         plt.plot(theta, np.array(ddist_numdiff_list_local)[:, k], "--", label="numdiff")
         plt.plot(
             theta,

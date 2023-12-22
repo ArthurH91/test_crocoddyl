@@ -122,27 +122,6 @@ class ResidualCollision(crocoddyl.ResidualModelAbstract):
         return distance
 
     def calcDiff(self, data, x, u=None):
-        # Computing the distance
-        # distance = pydiffcol.distance(
-        #     self._shape1_geom,
-        #     self._shape1_placement,
-        #     self._shape2_geom,
-        #     self._shape2_placement,
-        #     self._req,
-        #     self._res,
-        # )
-
-        # dist2 = np.linalg.norm(self._shape1_placement.translation - self._shape2_placement.translation) - 1.5e-1 - 0.055
-        # print(f"dist diff = {dist2 - distance}")
-        # # print(f"distance : {distance}")
-        # print(f"self._shape1_placement : {self._shape1_placement}")
-        # print(f"self._shape2_placement : {self._shape2_placement}")
-        # print(f"self._shape1_radius : {self._shape1_geom.radii}")
-        # print(f"self._shape2_radius : {self._shape2_geom.radius}")
-
-        # self.derivative_diffcol(data, x, u = None)
-        # print(f"self._J : {self._J}")
-
         # self.calcDiff_numdiff(data, x)
         # J_n = self._J
 
@@ -159,9 +138,6 @@ class ResidualCollision(crocoddyl.ResidualModelAbstract):
         #     print(f"self._cp1 = {self._cp1}")
         #     print(f"self._cp2 = {self._cp2}")
 
-        # print(f"q : {x[:self._nq]}")
-
-        # print("__________________")
         data.Rx[: self._nq] = self._J
 
     def calcDiff_numdiff(self, data, x):
@@ -175,14 +151,7 @@ class ResidualCollision(crocoddyl.ResidualModelAbstract):
         self._distance_numdiff = fx
 
     def calcDiff_florent(self, data, x):
-        # pin.forwardKinematics(self._pinocchio, data.shared.pinocchio, self.q)
-        # pin.updateGeometryPlacements(
-        #     self._pinocchio,
-        #     data.shared.pinocchio,
-        #     self._geom_model,
-        #     self._geom_data,
-        #     self.q,
-        # )
+
         self._jacobian = pin.computeFrameJacobian(
             self._pinocchio,
             data.shared.pinocchio,
@@ -193,18 +162,11 @@ class ResidualCollision(crocoddyl.ResidualModelAbstract):
 
         # Computing the distance
         self._distance_florent = self.f(data, x[: self._nq])
-        sign = 1
-        if self._distance_florent < 0:
-            sign = -1
+
         self._cp1 = self._res.getNearestPoint1()
         self._cp2 = self._res.getNearestPoint2()
 
-        self._J = (
-            1
-            * (self._cp1 - self._cp2).T
-            / self._distance_florent
-            @ self._jacobian[:3]
-        )
+        self._J = (self._cp1 - self._cp2).T / self._distance_florent @ self._jacobian[:3]
 
 
 if __name__ == "__main__":
