@@ -8,11 +8,22 @@ import argparse
 
 hppfcl.WITH_OCTOMAP = False
 
-# PARSER 
+# PARSER
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
-    "-p", "--panda", help="Chose the panda to do the unit tests", action="store_true", default=False
+    "-p",
+    "--panda",
+    help="Chose the panda to do the unit tests",
+    action="store_true",
+    default=False,
+)
+parser.add_argument(
+    "-d",
+    "--display",
+    help="Display in a meshcat visualizer.",
+    action="store_true",
+    default=False,
 )
 args = parser.parse_args()
 
@@ -21,9 +32,9 @@ args = parser.parse_args()
 YELLOW_FULL = np.array([1, 1, 0, 1.0])
 BLUE_FULL = np.array([144, 169, 183, 255]) / 255
 
-WITH_DISPLAY = True
-
+WITH_DISPLAY = args.display
 PANDA = args.panda
+
 
 def wrapper_robot():
     """Load the robot from the models folder.
@@ -33,7 +44,9 @@ def wrapper_robot():
     """
 
     ### LOADING THE ROBOT
-    pinocchio_model_dir = join(dirname(dirname(dirname(str(abspath(__file__))))), "models")
+    pinocchio_model_dir = join(
+        dirname(dirname(dirname(str(abspath(__file__))))), "models"
+    )
     model_path = join(pinocchio_model_dir, "franka_description/robots")
     mesh_dir = pinocchio_model_dir
     urdf_filename = "franka2.urdf"
@@ -61,6 +74,7 @@ def wrapper_robot():
     )
 
     return model_reduced, visual_model_reduced, collision_model_reduced
+
 
 class RobotWrapper:
     def __init__(self, scale=1.0, name_robot="ur10"):
@@ -190,6 +204,8 @@ class RobotWrapper:
         pin.framesForwardKinematics(self._rmodel, ndata, self._q_target)
 
         return ndata.oMf[self._rmodel.getFrameId("tool0")]
+
+
 ######################################## DISTANCE & ITS DERIVATIVES COMPUTATION #######################################
 
 
@@ -237,7 +253,8 @@ def ddist_numdiff(q):
         j_diff[i] = (dist(q + e) - dist(q - e)) / e[i] / 2
     return j_diff
 
-def ddist_florent(q):
+
+def ddist_analytic(q):
     pin.forwardKinematics(rmodel, rdata, q)
     pin.computeJointJacobians(rmodel, rdata, q)
     pin.updateGeometryPlacements(
@@ -263,7 +280,7 @@ def ddist_florent(q):
         hppfcl.Transform3f(shape2_placement.rotation, shape2_placement.translation),
         req,
         res,
-        )
+    )
     cp1 = res.getNearestPoint1()
     cp2 = res.getNearestPoint2()
 
@@ -274,13 +291,13 @@ def ddist_florent(q):
     CP2_SE3.translation = cp2
 
     deriv = (cp1 - cp2).T / distance @ jacobian[:3]
-    
+
     return deriv
 
 
 if __name__ == "__main__":
     # Loading the robot
-    
+
     if PANDA:
         rmodel, vmodel, cmodel = wrapper_robot()
     else:
@@ -301,12 +318,12 @@ if __name__ == "__main__":
     pin.updateGeometryPlacements(rmodel, rdata, cmodel, cdata, q0)
 
     # Creating the shapes for the collision detection.
-    
+
     if PANDA:
         shape1_id = cmodel.getGeometryId("panda2_link7_sc_2")
         shape2_id = cmodel.getGeometryId("panda2_link3_sc_1")
 
-    else: 
+    else:
         shape1_id = cmodel.getGeometryId("endeff_geom")
         shape2_id = cmodel.getGeometryId("target_geom")
 
@@ -341,6 +358,7 @@ if __name__ == "__main__":
 
     if WITH_DISPLAY:
         from wrapper_meshcat import MeshcatWrapper
+
         # Generating the meshcat visualizer
         MeshcatVis = MeshcatWrapper()
         vis, meshcatVis = MeshcatVis.visualize(
@@ -348,9 +366,8 @@ if __name__ == "__main__":
             robot_collision_model=cmodel,
             robot_visual_model=cmodel,
         )
-        # Displaying the initial 
+        # Displaying the initial
         vis.display(q0)
-
 
     # Distance & Derivative results from hppfcl
     req = hppfcl.DistanceRequest()
@@ -370,25 +387,39 @@ if __name__ == "__main__":
     theta = np.linspace(-np.pi, np.pi, 10000)
     for k in theta:
         if PANDA:
-            q = np.array([0, 0, 0, k, 0, 0,0])
+            q = np.array([0, 0, 0, k, 0, 0, 0])
         else:
             q = np.array([0, 0, 0, k, 0, 0])
 
         d = dist(q)
-        
+
         distance_list.append(d)
         ddist_numdiff_val = ddist_numdiff(q)
-        ddist_florent_val = ddist_florent(q)
+        ddist_analytic_val = ddist_analytic(q)
         ddist_numdiff_list.append(ddist_numdiff_val)
-        ddist_list.append(ddist_florent_val)
+        ddist_list.append(ddist_analytic_val)
 
     plots = [331, 332, 333, 334, 335, 336, 337]
     for k in range(nq):
         plt.subplot(plots[k])
-        plt.plot(theta, np.array(ddist_list)[:, k], "--", label="florent")
+        plt.plot(theta, np.array(ddist_list)[:, k], "--", label="analytic")
         plt.plot(theta, np.array(ddist_numdiff_list)[:, k], label="numdiff")
         plt.title("joint" + str(k))
         plt.ylabel(f"Distance derivative w.r.t. joint {k}")
         plt.legend()
-    plt.suptitle("Numdiff derivatives vs florent derivatives through theta, the rotation angle of the joint 4.")
+    plt.suptitle(
+        "Numdiff derivatives vs analytic derivatives through theta, the rotation angle of the joint 4."
+    )
     plt.show()
+
+    ######### TESTING
+    def test():
+        # Making sure the shapes exist
+        assert shape1_id <= len(cmodel.geometryObjects) - 1
+        assert shape2_id <= len(cmodel.geometryObjects) - 1
+
+        # Making sure the shapes are spheres
+        assert isinstance(shape1.geometry, hppfcl.Sphere)
+        assert isinstance(shape2.geometry, hppfcl.Sphere)
+
+    test()

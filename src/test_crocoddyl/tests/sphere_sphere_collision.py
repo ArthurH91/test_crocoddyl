@@ -1,8 +1,10 @@
-import sys
 import numpy as np
 import pinocchio as pin
 import hppfcl
 from pinocchio.visualize import MeshcatVisualizer
+
+### FROM THIS EXAMPLE, WE CAN SEE THAT THE CLOSEST POINTS IN PENETRATION AREN'T WELL COMPUTED FOR SOME HPPFCL VERSIONS. 
+
 
 RED = np.array([249, 136, 126, 125]) / 255
 GREEN = np.array([170, 236, 149, 125]) / 255
