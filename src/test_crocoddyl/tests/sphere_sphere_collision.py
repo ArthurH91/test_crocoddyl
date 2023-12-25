@@ -3,12 +3,12 @@ import pinocchio as pin
 import hppfcl
 from pinocchio.visualize import MeshcatVisualizer
 
-### FROM THIS EXAMPLE, WE CAN SEE THAT THE CLOSEST POINTS IN PENETRATION AREN'T WELL COMPUTED FOR SOME HPPFCL VERSIONS. 
+### FROM THIS EXAMPLE, WE CAN SEE THAT THE CLOSEST POINTS IN PENETRATION AREN'T WELL COMPUTED FOR SOME HPPFCL VERSIONS.
 
 
 RED = np.array([249, 136, 126, 125]) / 255
 GREEN = np.array([170, 236, 149, 125]) / 255
-BLACK_FULL = np.array([0, 0, 0, 1.])
+BLACK_FULL = np.array([0, 0, 0, 1.0])
 
 colors = [RED, GREEN]
 
@@ -58,9 +58,7 @@ distance = hppfcl.distance(
     hppfcl.Transform3f(shape2_placement.rotation, shape2_placement.translation),
     req,
     res,
-    )
-
-
+)
 
 
 print(distance)
@@ -79,7 +77,9 @@ cmodel.addGeometryObject(geom_obj2)
 
 
 viz = MeshcatVisualizer(
-    model=rmodel, collision_model=cmodel, visual_model=cmodel,
+    model=rmodel,
+    collision_model=cmodel,
+    visual_model=cmodel,
 )
 
 # Initialize the viewer.
