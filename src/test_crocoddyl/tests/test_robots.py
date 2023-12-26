@@ -1,4 +1,5 @@
 from os.path import dirname, join, abspath
+import time
 import numpy as np
 import matplotlib.pyplot as plt
 import hppfcl
@@ -122,7 +123,7 @@ class RobotWrapper:
         # Obtaining the frame tool0
         frame_tool0 = self._rmodel.frames[ID_frame_tool0]
         # Obtaining the parent joint of the frame tool0
-        parent_joint = frame_tool0.parent
+        parent_joint = frame_tool0.parentJoint
         # Obtaining the placement of the frame tool0
         Mf_endeff = frame_tool0.placement
 
@@ -384,7 +385,7 @@ if __name__ == "__main__":
     distance_list = []
     ddist_list = []
     ddist_numdiff_list = []
-    theta = np.linspace(-np.pi, np.pi, 10000)
+    theta = np.linspace(-np.pi, np.pi, 1000)
     for k in theta:
         if PANDA:
             q = np.array([0, 0, 0, k, 0, 0, 0])
@@ -411,6 +412,17 @@ if __name__ == "__main__":
         "Numdiff derivatives vs analytic derivatives through theta, the rotation angle of the joint 4."
     )
     plt.show()
+
+    ######### VISUALIZER
+    
+    if WITH_DISPLAY:
+        for k in theta:
+            if PANDA:
+                q = np.array([0, 0, 0, k, 0, 0, 0])
+            else:
+                q = np.array([0, 0, 0, k, 0, 0])
+            vis.display(q)
+            time.sleep(1e-4)
 
     ######### TESTING
     def test():
