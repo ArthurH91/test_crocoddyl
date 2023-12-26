@@ -9,6 +9,21 @@ import argparse
 
 hppfcl.WITH_OCTOMAP = False
 
+RED = np.array([249, 136, 126, 125]) / 255
+RED_FULL = np.array([249, 136, 126, 255]) / 255
+
+GREEN = np.array([170, 236, 149, 125]) / 255
+GREEN_FULL = np.array([170, 236, 149, 255]) / 255
+
+BLUE = np.array([144, 169, 183, 125]) / 255
+BLUE_FULL = np.array([144, 169, 183, 255]) / 255
+
+YELLOW = np.array([1, 1, 0, 0.5])
+YELLOW_FULL = np.array([1, 1, 0, 1.])
+
+BLACK = np.array([0, 0, 0, 0.5])
+BLACK_FULL = np.array([0, 0, 0, 1.])
+
 # PARSER
 
 parser = argparse.ArgumentParser()
@@ -37,7 +52,7 @@ WITH_DISPLAY = args.display
 PANDA = args.panda
 
 
-def wrapper_robot():
+def load_panda():
     """Load the robot from the models folder.
 
     Returns:
@@ -52,31 +67,122 @@ def wrapper_robot():
     mesh_dir = pinocchio_model_dir
     urdf_filename = "franka2.urdf"
     urdf_model_path = join(join(model_path, "panda"), urdf_filename)
-    srdf_model_path = model_path + "/panda/demo.srdf"
 
-    rmodel, collision_model, visual_model = pin.buildModelsFromUrdf(
+    rmodel, cmodel, vmodel = pin.buildModelsFromUrdf(
         urdf_model_path, mesh_dir, pin.JointModelFreeFlyer()
     )
 
     q0 = pin.neutral(rmodel)
-    jointsToLockIDs = [1, 9, 10]
 
-    geom_models = [visual_model, collision_model]
-    model_reduced, geometric_models_reduced = pin.buildReducedModel(
-        rmodel,
-        list_of_geom_models=geom_models,
-        list_of_joints_to_lock=jointsToLockIDs,
-        reference_configuration=q0,
+    rmodel, [vmodel, cmodel] = pin.buildReducedModel(
+        rmodel, [vmodel, cmodel], [1, 9, 10], q0
     )
 
-    visual_model_reduced, collision_model_reduced = (
-        geometric_models_reduced[0],
-        geometric_models_reduced[1],
+    ### CREATING THE SPHERE ON THE UNIVERSE 
+    SPHERE1_RADIUS = 1.5e-1
+    SPHERE1_POSE = pin.SE3.Identity()
+    SPHERE1_POSE.translation = np.array([0.0, 0.25, 1.5])
+    SPHERE1 = hppfcl.Sphere(SPHERE1_RADIUS)
+    SPHERE1_GEOM_OBJECT = pin.GeometryObject(
+        "SPHERE1",
+        rmodel.getFrameId("universe"),
+        rmodel.frames[rmodel.getFrameId("universe")].parentJoint,
+        SPHERE1,
+        SPHERE1_POSE,
     )
+    SPHERE1_GEOM_OBJECT.meshColor = YELLOW
 
-    return model_reduced, visual_model_reduced, collision_model_reduced
+    IG_SPHERE1 = cmodel.addGeometryObject(SPHERE1_GEOM_OBJECT)
+
+    ### CREATING THE SPHERE ON THE END EFFECTOR
+    SPHERE2_RADIUS = 1.5e-1
+    SPHERE2_POSE = pin.SE3.Identity()
+    SPHERE2_POSE.translation = np.array([0.2, 0.0, 0.0])
+    SPHERE2 = hppfcl.Sphere(SPHERE2_RADIUS)
+    SPHERE2_GEOM_OBJECT = pin.GeometryObject(
+        "SPHERE2",
+        rmodel.getFrameId("panda2_leftfinger"),
+        rmodel.frames[rmodel.getFrameId("panda2_leftfinger")].parentJoint,
+        SPHERE2,
+        SPHERE2_POSE,
+    )
+    SPHERE2_GEOM_OBJECT.meshColor = GREEN
+    IG_SPHERE2 = cmodel.addGeometryObject(SPHERE2_GEOM_OBJECT)
+
+    ### CREATING THE SPHERE ON THE ROBOT
+    SPHERE3_RADIUS = 1.5e-1
+    SPHERE3_POSE = pin.SE3.Identity()
+    SPHERE3_POSE.translation = np.array([0.0, 0.1, 0.2])
+    SPHERE3 = hppfcl.Sphere(SPHERE3_RADIUS)
+    SPHERE3_GEOM_OBJECT = pin.GeometryObject(
+        "SPHERE3",
+        rmodel.getFrameId("panda2_link3_sc_joint"),
+        rmodel.frames[rmodel.getFrameId("panda2_link3_sc_joint")].parentJoint,
+        SPHERE3,
+        SPHERE3_POSE,
+    )
+    SPHERE3_GEOM_OBJECT.meshColor = BLUE
+    IG_SPHERE3 = cmodel.addGeometryObject(SPHERE3_GEOM_OBJECT)
 
 
+    return rmodel, vmodel, cmodel
+
+
+def load_ur():
+    
+    robot = robex.load("ur10")
+    rmodel = robot.model
+    cmodel = robot.collision_model
+    vmodel = robot.visual_model
+    
+    ### CREATING THE SPHERE ON THE UNIVERSE 
+    SPHERE1_RADIUS = 1.5e-1
+    SPHERE1_POSE = pin.SE3.Identity()
+    SPHERE1_POSE.translation = np.array([0.0, 0.25, 1.5])
+    SPHERE1 = hppfcl.Sphere(SPHERE1_RADIUS)
+    SPHERE1_GEOM_OBJECT = pin.GeometryObject(
+        "SPHERE1",
+        rmodel.getFrameId("universe"),
+        rmodel.frames[rmodel.getFrameId("universe")].parentJoint,
+        SPHERE1,
+        SPHERE1_POSE,
+    )
+    SPHERE1_GEOM_OBJECT.meshColor = YELLOW
+
+    IG_SPHERE1 = cmodel.addGeometryObject(SPHERE1_GEOM_OBJECT)
+    
+    ### CREATING THE SPHERE ON THE END EFFECTOR
+    SPHERE2_RADIUS = 1.5e-1
+    SPHERE2_POSE = pin.SE3.Identity()
+    SPHERE2_POSE.translation = np.array([0.2, 0.0, 0.0])
+    SPHERE2 = hppfcl.Sphere(SPHERE2_RADIUS)
+    SPHERE2_GEOM_OBJECT = pin.GeometryObject(
+        "SPHERE2",
+        rmodel.getFrameId("tool0"),
+        rmodel.frames[rmodel.getFrameId("tool0")].parentJoint,
+        SPHERE2,
+        SPHERE2_POSE,
+    )
+    SPHERE2_GEOM_OBJECT.meshColor = GREEN
+    IG_SPHERE2 = cmodel.addGeometryObject(SPHERE2_GEOM_OBJECT)
+    
+    ### CREATING THE SPHERE ON THE ROBOT
+    SPHERE3_RADIUS = 1.5e-1
+    SPHERE3_POSE = pin.SE3.Identity()
+    SPHERE3_POSE.translation = np.array([0., 0.3, 0.0])
+    SPHERE3 = hppfcl.Sphere(SPHERE3_RADIUS)
+    SPHERE3_GEOM_OBJECT = pin.GeometryObject(
+        "SPHERE3",
+        rmodel.getFrameId("wrist_2_joint"),
+        rmodel.frames[rmodel.getFrameId("wrist_2_joint")].parentJoint,
+        SPHERE3,
+        SPHERE3_POSE,
+    )
+    SPHERE3_GEOM_OBJECT.meshColor = BLUE
+    IG_SPHERE3 = cmodel.addGeometryObject(SPHERE3_GEOM_OBJECT)
+
+    return rmodel, vmodel, cmodel
+    
 class RobotWrapper:
     def __init__(self, scale=1.0, name_robot="ur10"):
         """Initialize the wrapper with a scaling number of the target and the name of the robot wanted to get unwrapped.
@@ -265,11 +371,19 @@ def ddist_analytic(q):
         cdata,
         q,
     )
-    jacobian = pin.computeFrameJacobian(
+    jacobian1 = pin.computeFrameJacobian(
         rmodel,
         rdata,
         q,
         shape1.parentFrame,
+        pin.LOCAL_WORLD_ALIGNED,
+    )
+
+    jacobian2 = pin.computeFrameJacobian(
+        rmodel,
+        rdata,
+        q,
+        shape2.parentFrame,
         pin.LOCAL_WORLD_ALIGNED,
     )
 
@@ -285,13 +399,28 @@ def ddist_analytic(q):
     cp1 = res.getNearestPoint1()
     cp2 = res.getNearestPoint2()
 
+    ## Transport the jacobian of frame 1 into the jacobian associated to cp1
+    # Vector from frame 1 center to p1
+    f1p1 = cp1 - rdata.oMf[shape1.parentFrame].translation
+    # The following 2 lines are the easiest way to understand the transformation
+    # although not the most efficient way to compute it.
+    f1Mp1 = pin.SE3(np.eye(3), f1p1)
+    jacobian1 = f1Mp1.actionInverse @ jacobian1
+
+    ## Transport the jacobian of frame 2 into the jacobian associated to cp2
+    # Vector from frame 2 center to p2
+    f2p2 = cp2 - rdata.oMf[shape2.parentFrame].translation
+    # The following 2 lines are the easiest way to understand the transformation
+    # although not the most efficient way to compute it.
+    f2Mp2 = pin.SE3(np.eye(3), f2p2)
+    jacobian2 = f2Mp2.actionInverse @ jacobian2
+
     CP1_SE3 = pin.SE3.Identity()
     CP1_SE3.translation = cp1
 
     CP2_SE3 = pin.SE3.Identity()
     CP2_SE3.translation = cp2
-
-    deriv = (cp1 - cp2).T / distance @ jacobian[:3]
+    deriv = (cp1 - cp2).T / distance @ (jacobian1[:3] - jacobian2[:3])
 
     return deriv
 
@@ -299,11 +428,11 @@ def ddist_analytic(q):
 if __name__ == "__main__":
     # Loading the robot
 
+    
     if PANDA:
-        rmodel, vmodel, cmodel = wrapper_robot()
+        rmodel, vmodel, cmodel = load_panda()
     else:
-        robot_wrapper = RobotWrapper()
-        robot, rmodel, cmodel = robot_wrapper(target=True)
+        rmodel, vmodel, cmodel = load_ur()
     # Creating the datas model
     rdata = rmodel.createData()
     cdata = cmodel.createData()
@@ -320,13 +449,8 @@ if __name__ == "__main__":
 
     # Creating the shapes for the collision detection.
 
-    if PANDA:
-        shape1_id = cmodel.getGeometryId("panda2_link7_sc_2")
-        shape2_id = cmodel.getGeometryId("panda2_link3_sc_1")
-
-    else:
-        shape1_id = cmodel.getGeometryId("endeff_geom")
-        shape2_id = cmodel.getGeometryId("target_geom")
+    shape1_id = cmodel.getGeometryId("SPHERE1")
+    shape2_id = cmodel.getGeometryId("SPHERE3")
 
     # Making sure the shape exists
     assert shape1_id <= len(cmodel.geometryObjects)
@@ -385,7 +509,7 @@ if __name__ == "__main__":
     distance_list = []
     ddist_list = []
     ddist_numdiff_list = []
-    theta = np.linspace(-np.pi, np.pi, 1000)
+    theta = np.linspace(-np.pi, np.pi, 100)
     for k in theta:
         if PANDA:
             q = np.array([0, 0, 0, k, 0, 0, 0])
@@ -414,7 +538,7 @@ if __name__ == "__main__":
     plt.show()
 
     ######### VISUALIZER
-    
+
     if WITH_DISPLAY:
         for k in theta:
             if PANDA:
