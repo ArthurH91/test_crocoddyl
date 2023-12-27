@@ -778,6 +778,203 @@ class TestRobotsDistanceDerivatives(unittest.TestCase):
             np.linalg.norm(distance_deriv_ana_pa),
             np.linalg.norm(distance_deriv_numdiff_pa),
         )
+        
+        ### Testing now the derivatives across a trajectory
+        
+        q0_ur = pin.neutral(rmodel_ur)
+        q1_ur = pin.randomConfiguration(rmodel_ur)
+        
+        q0_pa = pin.neutral(rmodel_pa)
+        q1_pa = pin.randomConfiguration(rmodel_pa)
+        
+        alpha_list = np.linspace(0,1,100)
+        
+        for alpha in alpha_list:
+            q_ur = pin.interpolate(rmodel_ur,q0_ur, q1_ur, alpha)
+            q_pa = pin.interpolate(rmodel_pa,q0_pa, q1_pa, alpha)
+            
+            # Updating the models
+            pin.forwardKinematics(rmodel_ur, rdata_ur, q_ur)
+            pin.framesForwardKinematics(rmodel_ur, rdata_ur, q_ur)
+            pin.updateGeometryPlacements(rmodel_ur, rdata_ur, cmodel_ur, cdata_ur, q_ur)
+
+            pin.forwardKinematics(rmodel_pa, rdata_pa, q_pa)
+            pin.framesForwardKinematics(rmodel_pa, rdata_pa, q_pa)
+            pin.updateGeometryPlacements(rmodel_pa, rdata_pa, cmodel_pa, cdata_pa, q_pa)
+            
+                    ### Distance derivatives between sphere 1 (on universe) & sphere 2 (on tool0 / gripper)
+
+            distance_deriv_ana_ur = self.ddist_analytic(
+                rmodel_ur,
+                rdata_ur,
+                cmodel_ur,
+                cdata_ur,
+                self.ID_SPHERE1_UR,
+                self.ID_SPHERE2_UR,
+                res,
+                req,
+                q_ur,
+            )
+            distance_deriv_numdiff_ur = self.ddist_numdiff(
+                rmodel_ur,
+                rdata_ur,
+                cmodel_ur,
+                cdata_ur,
+                self.ID_SPHERE1_UR,
+                self.ID_SPHERE2_UR,
+                res,
+                req,
+                q_ur,
+            )
+
+            distance_deriv_ana_pa = self.ddist_analytic(
+                rmodel_pa,
+                rdata_pa,
+                cmodel_pa,
+                cdata_pa,
+                self.ID_SPHERE1_PA,
+                self.ID_SPHERE2_PA,
+                res,
+                req,
+                q_pa,
+            )
+            distance_deriv_numdiff_pa = self.ddist_numdiff(
+                rmodel_pa,
+                rdata_pa,
+                cmodel_pa,
+                cdata_pa,
+                self.ID_SPHERE1_PA,
+                self.ID_SPHERE2_PA,
+                res,
+                req,
+                q_pa,
+            )
+
+            self.assertAlmostEqual(
+                np.linalg.norm(distance_deriv_ana_ur),
+                np.linalg.norm(distance_deriv_numdiff_ur),
+            )
+            self.assertAlmostEqual(
+                np.linalg.norm(distance_deriv_ana_pa),
+                np.linalg.norm(distance_deriv_numdiff_pa),
+            )
+
+            ### Distance derivatives between sphere 2 (on tool0 / gripper) & sphere 3 (on the robot)
+
+            distance_deriv_ana_ur = self.ddist_analytic(
+                rmodel_ur,
+                rdata_ur,
+                cmodel_ur,
+                cdata_ur,
+                self.ID_SPHERE3_UR,
+                self.ID_SPHERE2_UR,
+                res,
+                req,
+                q_ur,
+            )
+            distance_deriv_numdiff_ur = self.ddist_numdiff(
+                rmodel_ur,
+                rdata_ur,
+                cmodel_ur,
+                cdata_ur,
+                self.ID_SPHERE3_UR,
+                self.ID_SPHERE2_UR,
+                res,
+                req,
+                q_ur,
+            )
+
+            distance_deriv_ana_pa = self.ddist_analytic(
+                rmodel_pa,
+                rdata_pa,
+                cmodel_pa,
+                cdata_pa,
+                self.ID_SPHERE3_PA,
+                self.ID_SPHERE2_PA,
+                res,
+                req,
+                q_pa,
+            )
+            distance_deriv_numdiff_pa = self.ddist_numdiff(
+                rmodel_pa,
+                rdata_pa,
+                cmodel_pa,
+                cdata_pa,
+                self.ID_SPHERE3_PA,
+                self.ID_SPHERE2_PA,
+                res,
+                req,
+                q_pa,
+            )
+
+            self.assertAlmostEqual(
+                np.linalg.norm(distance_deriv_ana_ur),
+                np.linalg.norm(distance_deriv_numdiff_ur),
+            )
+            self.assertAlmostEqual(
+                np.linalg.norm(distance_deriv_ana_pa),
+                np.linalg.norm(distance_deriv_numdiff_pa),
+            )
+
+            ### Distance derivatives between sphere 1 (on universe) & sphere 3 (on the robot)
+
+            distance_deriv_ana_ur = self.ddist_analytic(
+                rmodel_ur,
+                rdata_ur,
+                cmodel_ur,
+                cdata_ur,
+                self.ID_SPHERE1_UR,
+                self.ID_SPHERE3_UR,
+                res,
+                req,
+                q_ur,
+            )
+            distance_deriv_numdiff_ur = self.ddist_numdiff(
+                rmodel_ur,
+                rdata_ur,
+                cmodel_ur,
+                cdata_ur,
+                self.ID_SPHERE1_UR,
+                self.ID_SPHERE3_UR,
+                res,
+                req,
+                q_ur,
+            )
+
+            distance_deriv_ana_pa = self.ddist_analytic(
+                rmodel_pa,
+                rdata_pa,
+                cmodel_pa,
+                cdata_pa,
+                self.ID_SPHERE1_PA,
+                self.ID_SPHERE3_PA,
+                res,
+                req,
+                q_pa,
+            )
+            distance_deriv_numdiff_pa = self.ddist_numdiff(
+                rmodel_pa,
+                rdata_pa,
+                cmodel_pa,
+                cdata_pa,
+                self.ID_SPHERE1_PA,
+                self.ID_SPHERE3_PA,
+                res,
+                req,
+                q_pa,
+            )
+
+            self.assertAlmostEqual(
+                np.linalg.norm(distance_deriv_ana_ur),
+                np.linalg.norm(distance_deriv_numdiff_ur),
+            )
+            self.assertAlmostEqual(
+                np.linalg.norm(distance_deriv_ana_pa),
+                np.linalg.norm(distance_deriv_numdiff_pa),
+        )
+            
+
+        
 
     def dist(self, rmodel, rdata, cmodel, cdata, shape1_id, shape2_id, res, req, q):
         """Computes the distance with hppfcl.
