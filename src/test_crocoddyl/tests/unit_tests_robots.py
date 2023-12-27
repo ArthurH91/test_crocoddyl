@@ -11,6 +11,8 @@ import hppfcl
 class TestRobotsDistanceDerivatives(unittest.TestCase):
     """This class is made to test the distances derivatives between primitives pairs such as sphere-sphere of panda robot & ur10. The collisions shapes are from hppfcl."""
 
+    radius = 1.5e-1
+
     def load_panda(self):
         """Load the robot from the models folder.
 
@@ -38,10 +40,9 @@ class TestRobotsDistanceDerivatives(unittest.TestCase):
         )
 
         ### CREATING THE SPHERE ON THE UNIVERSE
-        SPHERE1_RADIUS = 1.5e-1
         SPHERE1_POSE = pin.SE3.Identity()
         SPHERE1_POSE.translation = np.array([0.0, 0.25, 1.5])
-        SPHERE1 = hppfcl.Sphere(SPHERE1_RADIUS)
+        SPHERE1 = hppfcl.Sphere(self.radius)
         SPHERE1_GEOM_OBJECT = pin.GeometryObject(
             "SPHERE1",
             rmodel.getFrameId("universe"),
@@ -55,7 +56,7 @@ class TestRobotsDistanceDerivatives(unittest.TestCase):
         SPHERE2_RADIUS = 1.5e-1
         SPHERE2_POSE = pin.SE3.Identity()
         SPHERE2_POSE.translation = np.array([0.2, 0.0, 0.0])
-        SPHERE2 = hppfcl.Sphere(SPHERE2_RADIUS)
+        SPHERE2 = hppfcl.Sphere(self.radius)
         SPHERE2_GEOM_OBJECT = pin.GeometryObject(
             "SPHERE2",
             rmodel.getFrameId("panda2_leftfinger"),
@@ -69,7 +70,7 @@ class TestRobotsDistanceDerivatives(unittest.TestCase):
         SPHERE3_RADIUS = 1.5e-1
         SPHERE3_POSE = pin.SE3.Identity()
         SPHERE3_POSE.translation = np.array([0.0, 0.1, 0.2])
-        SPHERE3 = hppfcl.Sphere(SPHERE3_RADIUS)
+        SPHERE3 = hppfcl.Sphere(self.radius)
         SPHERE3_GEOM_OBJECT = pin.GeometryObject(
             "SPHERE3",
             rmodel.getFrameId("panda2_link3_sc_joint"),
@@ -91,7 +92,7 @@ class TestRobotsDistanceDerivatives(unittest.TestCase):
         SPHERE1_RADIUS = 1.5e-1
         SPHERE1_POSE = pin.SE3.Identity()
         SPHERE1_POSE.translation = np.array([0.0, 0.25, 1.5])
-        SPHERE1 = hppfcl.Sphere(SPHERE1_RADIUS)
+        SPHERE1 = hppfcl.Sphere(self.radius)
         self.SPHERE1_GEOM_OBJECT = pin.GeometryObject(
             "SPHERE1",
             rmodel.getFrameId("universe"),
@@ -105,7 +106,7 @@ class TestRobotsDistanceDerivatives(unittest.TestCase):
         SPHERE2_RADIUS = 1.5e-1
         SPHERE2_POSE = pin.SE3.Identity()
         SPHERE2_POSE.translation = np.array([0.2, 0.0, 0.0])
-        SPHERE2 = hppfcl.Sphere(SPHERE2_RADIUS)
+        SPHERE2 = hppfcl.Sphere(self.radius)
         self.SPHERE2_GEOM_OBJECT = pin.GeometryObject(
             "SPHERE2",
             rmodel.getFrameId("tool0"),
@@ -119,7 +120,7 @@ class TestRobotsDistanceDerivatives(unittest.TestCase):
         SPHERE3_RADIUS = 1.5e-1
         SPHERE3_POSE = pin.SE3.Identity()
         SPHERE3_POSE.translation = np.array([0.0, 0.3, 0.0])
-        SPHERE3 = hppfcl.Sphere(SPHERE3_RADIUS)
+        SPHERE3 = hppfcl.Sphere(self.radius)
         self.SPHERE3_GEOM_OBJECT = pin.GeometryObject(
             "SPHERE3",
             rmodel.getFrameId("wrist_2_joint"),
@@ -138,41 +139,252 @@ class TestRobotsDistanceDerivatives(unittest.TestCase):
         rdata_ur = rmodel_ur.createData()
         cdata_ur = cmodel_ur.createData()
 
-        q0_ur = pin.neutral(rmodel_ur)
+        q_ur = pin.neutral(rmodel_ur)
 
-        # Loading the panda robot 
+        # Loading the panda robot
         rmodel_pa, vmodel_pa, cmodel_pa = self.load_panda()
 
         rdata_pa = rmodel_pa.createData()
         cdata_pa = cmodel_pa.createData()
 
-        q0_pa = pin.neutral(rmodel_pa)        
-        
+        q_pa = pin.neutral(rmodel_pa)
+
         # Number of joints
         nq_ur = rmodel_ur.nq
         nq_pa = rmodel_pa.nq
 
         # Updating the models
-        pin.forwardKinematics(rmodel_ur, rdata_ur, q0_ur)
-        pin.framesForwardKinematics(rmodel_ur, rdata_ur, q0_ur)
-        pin.updateGeometryPlacements(rmodel_ur, rdata_ur, cmodel_ur, cdata_ur, q0_ur)
+        pin.forwardKinematics(rmodel_ur, rdata_ur, q_ur)
+        pin.framesForwardKinematics(rmodel_ur, rdata_ur, q_ur)
+        pin.updateGeometryPlacements(rmodel_ur, rdata_ur, cmodel_ur, cdata_ur, q_ur)
 
-        pin.forwardKinematics(rmodel_pa, rdata_pa, q0_pa)
-        pin.framesForwardKinematics(rmodel_pa, rdata_pa, q0_pa)
-        pin.updateGeometryPlacements(rmodel_pa, rdata_pa, cmodel_pa, cdata_pa, q0_pa)
+        pin.forwardKinematics(rmodel_pa, rdata_pa, q_pa)
+        pin.framesForwardKinematics(rmodel_pa, rdata_pa, q_pa)
+        pin.updateGeometryPlacements(rmodel_pa, rdata_pa, cmodel_pa, cdata_pa, q_pa)
 
         # Distance & Derivative results from hppfcl
         req = hppfcl.DistanceRequest()
         res = hppfcl.DistanceResult()
 
-        ### Distance between sphere 1 (on universe) & sphere 2 (on tool0)
+        ### Distance between sphere 1 (on universe) & sphere 2 (on tool0 / gripper)
 
-        distance_ur = self.dist(rmodel_ur, rdata_ur, cmodel_ur, cdata_ur, self.ID_SPHERE1_UR, self.ID_SPHERE2_UR, res, req, q0_ur)
-        distance_pa = self.dist(rmodel_pa, rdata_pa, cmodel_pa, cdata_pa, self.ID_SPHERE1_PA, self.ID_SPHERE2_PA, res, req, q0_pa)
+        distance_ur = self.dist(
+            rmodel_ur,
+            rdata_ur,
+            cmodel_ur,
+            cdata_ur,
+            self.ID_SPHERE1_UR,
+            self.ID_SPHERE2_UR,
+            res,
+            req,
+            q_ur,
+        )
+        distance_pa = self.dist(
+            rmodel_pa,
+            rdata_pa,
+            cmodel_pa,
+            cdata_pa,
+            self.ID_SPHERE1_PA,
+            self.ID_SPHERE2_PA,
+            res,
+            req,
+            q_pa,
+        )
 
-        self.assertAlmostEqual(distance_ur,1.4865013858018128)
-        self.assertAlmostEqual(distance_pa,0.28841673157720465)
+        self.assertAlmostEqual(distance_ur, 1.4865013858018128)
+        self.assertAlmostEqual(distance_pa, 0.28841673157720465)
 
+        ### Distance between sphere 2 (on tool0 / gripper) & sphere 3 (on the robot)
+
+        distance_ur = self.dist(
+            rmodel_ur,
+            rdata_ur,
+            cmodel_ur,
+            cdata_ur,
+            self.ID_SPHERE3_UR,
+            self.ID_SPHERE2_UR,
+            res,
+            req,
+            q_ur,
+        )
+        distance_pa = self.dist(
+            rmodel_pa,
+            rdata_pa,
+            cmodel_pa,
+            cdata_pa,
+            self.ID_SPHERE3_PA,
+            self.ID_SPHERE2_PA,
+            res,
+            req,
+            q_pa,
+        )
+
+        self.assertAlmostEqual(distance_ur, 0.07866408596538443)
+        self.assertAlmostEqual(distance_pa, 0.056089876295297214)
+
+        ### Distance between sphere 1 (on universe) & sphere 3 (on the robot)
+
+        distance_ur = self.dist(
+            rmodel_ur,
+            rdata_ur,
+            cmodel_ur,
+            cdata_ur,
+            self.ID_SPHERE3_UR,
+            self.ID_SPHERE1_UR,
+            res,
+            req,
+            q_ur,
+        )
+        distance_pa = self.dist(
+            rmodel_pa,
+            rdata_pa,
+            cmodel_pa,
+            cdata_pa,
+            self.ID_SPHERE3_PA,
+            self.ID_SPHERE1_PA,
+            res,
+            req,
+            q_pa,
+        )
+
+        self.assertAlmostEqual(distance_ur, 1.5255526646648898)
+        self.assertAlmostEqual(distance_pa, 0.4741771438114147)
+
+        q_ur = pin.randomConfiguration(rmodel_ur)
+        q_pa = pin.randomConfiguration(rmodel_pa)
+
+        # Updating the models
+        pin.forwardKinematics(rmodel_ur, rdata_ur, q_ur)
+        pin.framesForwardKinematics(rmodel_ur, rdata_ur, q_ur)
+        pin.updateGeometryPlacements(rmodel_ur, rdata_ur, cmodel_ur, cdata_ur, q_ur)
+
+        pin.forwardKinematics(rmodel_pa, rdata_pa, q_pa)
+        pin.framesForwardKinematics(rmodel_pa, rdata_pa, q_pa)
+        pin.updateGeometryPlacements(rmodel_pa, rdata_pa, cmodel_pa, cdata_pa, q_pa)
+
+        sphere1_placement_ur = cdata_ur.oMg[cmodel_ur.getGeometryId("SPHERE1")]
+        sphere2_placement_ur = cdata_ur.oMg[cmodel_ur.getGeometryId("SPHERE2")]
+        sphere3_placement_ur = cdata_ur.oMg[cmodel_ur.getGeometryId("SPHERE3")]
+
+        sphere1_placement_pa = cdata_pa.oMg[cmodel_pa.getGeometryId("SPHERE1")]
+        sphere2_placement_pa = cdata_pa.oMg[cmodel_pa.getGeometryId("SPHERE2")]
+        sphere3_placement_pa = cdata_pa.oMg[cmodel_pa.getGeometryId("SPHERE3")]
+
+        ### Distance between sphere 1 (on universe) & sphere 2 (on tool0 / gripper)
+
+        distance_ur = self.dist(
+            rmodel_ur,
+            rdata_ur,
+            cmodel_ur,
+            cdata_ur,
+            self.ID_SPHERE1_UR,
+            self.ID_SPHERE2_UR,
+            res,
+            req,
+            q_ur,
+        )
+        distance_pa = self.dist(
+            rmodel_pa,
+            rdata_pa,
+            cmodel_pa,
+            cdata_pa,
+            self.ID_SPHERE1_PA,
+            self.ID_SPHERE2_PA,
+            res,
+            req,
+            q_pa,
+        )
+
+        self.assertAlmostEqual(
+            distance_ur,
+            np.linalg.norm(
+                (sphere1_placement_ur.inverse() * sphere2_placement_ur).translation)
+                - 2 * self.radius
+        )
+        self.assertAlmostEqual(
+            distance_pa,
+            np.linalg.norm(
+                (sphere1_placement_pa.inverse() * sphere2_placement_pa).translation)
+                - 2 * self.radius
+        )
+
+        ### Distance between sphere 2 (on tool0 / gripper) & sphere 3 (on the robot)
+
+        distance_ur = self.dist(
+            rmodel_ur,
+            rdata_ur,
+            cmodel_ur,
+            cdata_ur,
+            self.ID_SPHERE3_UR,
+            self.ID_SPHERE2_UR,
+            res,
+            req,
+            q_ur,
+        )
+        distance_pa = self.dist(
+            rmodel_pa,
+            rdata_pa,
+            cmodel_pa,
+            cdata_pa,
+            self.ID_SPHERE3_PA,
+            self.ID_SPHERE2_PA,
+            res,
+            req,
+            q_pa,
+        )
+
+        self.assertAlmostEqual(
+            distance_ur,
+            np.linalg.norm(
+                (sphere3_placement_ur.inverse() * sphere2_placement_ur).translation)
+                - 2 * self.radius
+            ,
+        )
+        self.assertAlmostEqual(
+            distance_pa,
+            np.linalg.norm(
+                (sphere3_placement_pa.inverse() * sphere2_placement_pa).translation)
+                - 2 * self.radius
+        )
+
+
+        ### Distance between sphere 1 (on universe) & sphere 3 (on the robot)
+
+        distance_ur = self.dist(
+            rmodel_ur,
+            rdata_ur,
+            cmodel_ur,
+            cdata_ur,
+            self.ID_SPHERE3_UR,
+            self.ID_SPHERE1_UR,
+            res,
+            req,
+            q_ur,
+        )
+        distance_pa = self.dist(
+            rmodel_pa,
+            rdata_pa,
+            cmodel_pa,
+            cdata_pa,
+            self.ID_SPHERE3_PA,
+            self.ID_SPHERE1_PA,
+            res,
+            req,
+            q_pa,
+        )
+
+        self.assertAlmostEqual(
+            distance_ur,
+            np.linalg.norm(
+                (sphere3_placement_ur.inverse() * sphere1_placement_ur).translation)
+                - 2 * self.radius
+        )
+        self.assertAlmostEqual(
+            distance_pa,
+            np.linalg.norm(
+                (sphere3_placement_pa.inverse() * sphere1_placement_pa).translation)
+                - 2 * self.radius
+        )
 
     def dist(self, rmodel, rdata, cmodel, cdata, shape1_id, shape2_id, res, req, q):
         """Computes the distance with diffcol
