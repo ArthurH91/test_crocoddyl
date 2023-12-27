@@ -218,11 +218,11 @@ class OCPPandaReachingColWithSingleCol:
         ddp = mim_solvers.SolverCSQP(problem)
         
         # Merit function
-        ddp.use_filter_line_search = True
+        ddp.use_filter_line_search = False
         
         # Parameters of the solver
         ddp.termination_tolerance = 1e-3
-        ddp.max_qp_iters = 10000
+        ddp.max_qp_iters = 1000
         ddp.eps_abs = 1e-6
         ddp.eps_rel = 0
         
