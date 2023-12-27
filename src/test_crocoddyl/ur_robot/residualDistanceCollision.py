@@ -121,22 +121,21 @@ class ResidualCollision(crocoddyl.ResidualModelAbstract):
 
         return distance
 
+
     def calcDiff(self, data, x, u=None):
         # self.calcDiff_numdiff(data, x)
         # J_n = self._J
 
-        self.calcDiff_florent(data, x)
+        self.calcDiff_ana(data, x)
         J_f = self._J
 
-        # if False in (np.isclose(J_n, J_f, rtol=1e-2)):
-        #     print(x[:6].tolist())
-        #     print(f"dist_numdiff = {self._distance_numdiff}")
-        #     print(f"dist_florent = {self._distance_florent}")
-        #     # # assert False in np.isclose(J_n, J_f, rtol=1e-3)
-        #     print(f"self._J numdiff: {J_n}")
-        #     print(f"self._J florent: {J_f}")
-        #     print(f"self._cp1 = {self._cp1}")
-        #     print(f"self._cp2 = {self._cp2}")
+        # J_diff = J_f - J_n 
+        
+        # for k in J_diff:
+        #     if np.linalg.norm(k) > 1e-5:
+        #         print(J_diff)
+        #         print(x[:6].tolist())
+        #         print('-----------')
 
         data.Rx[: self._nq] = self._J
 
@@ -150,9 +149,8 @@ class ResidualCollision(crocoddyl.ResidualModelAbstract):
         self._J = j_diff
         self._distance_numdiff = fx
 
-    def calcDiff_florent(self, data, x):
-
-        self._jacobian = pin.computeFrameJacobian(
+    def calcDiff_ana(self, data, x):
+        jacobian1 = pin.computeFrameJacobian(
             self._pinocchio,
             data.shared.pinocchio,
             self.q,
@@ -160,13 +158,53 @@ class ResidualCollision(crocoddyl.ResidualModelAbstract):
             pin.LOCAL_WORLD_ALIGNED,
         )
 
+        jacobian2 = pin.computeFrameJacobian(
+            self._pinocchio,
+            data.shared.pinocchio,
+            self.q,
+            self._shape2.parentFrame,
+            pin.LOCAL_WORLD_ALIGNED,
+        )
+
         # Computing the distance
-        self._distance_florent = self.f(data, x[: self._nq])
+        distance = hppfcl.distance(
+            self._shape1.geometry,
+            hppfcl.Transform3f(
+                self._shape1_placement.rotation, self._shape1_placement.translation
+            ),
+            self._shape2.geometry,
+            hppfcl.Transform3f(
+                self._shape2_placement.rotation, self._shape2_placement.translation
+            ),
+            self._req,
+            self._res,
+        )
+        cp1 = self._res.getNearestPoint1()
+        cp2 = self._res.getNearestPoint2()
 
-        self._cp1 = self._res.getNearestPoint1()
-        self._cp2 = self._res.getNearestPoint2()
+        ## Transport the jacobian of frame 1 into the jacobian associated to cp1
+        # Vector from frame 1 center to p1
+        f1p1 = cp1 - data.shared.pinocchio.oMf[self._shape1.parentFrame].translation
+        # The following 2 lines are the easiest way to understand the transformation
+        # although not the most efficient way to compute it.
+        f1Mp1 = pin.SE3(np.eye(3), f1p1)
+        jacobian1 = f1Mp1.actionInverse @ jacobian1
 
-        self._J = (self._cp1 - self._cp2).T / self._distance_florent @ self._jacobian[:3]
+        ## Transport the jacobian of frame 2 into the jacobian associated to cp2
+        # Vector from frame 2 center to p2
+        f2p2 = cp2 - data.shared.pinocchio.oMf[self._shape2.parentFrame].translation
+        # The following 2 lines are the easiest way to understand the transformation
+        # although not the most efficient way to compute it.
+        f2Mp2 = pin.SE3(np.eye(3), f2p2)
+        jacobian2 = f2Mp2.actionInverse @ jacobian2
+
+        CP1_SE3 = pin.SE3.Identity()
+        CP1_SE3.translation = cp1
+
+        CP2_SE3 = pin.SE3.Identity()
+        CP2_SE3.translation = cp2
+        self._J = (cp1 - cp2).T / distance @ (jacobian1[:3] - jacobian2[:3])
+
 
 
 if __name__ == "__main__":

@@ -778,21 +778,21 @@ class TestRobotsDistanceDerivatives(unittest.TestCase):
             np.linalg.norm(distance_deriv_ana_pa),
             np.linalg.norm(distance_deriv_numdiff_pa),
         )
-        
+
         ### Testing now the derivatives across a trajectory
-        
+
         q0_ur = pin.neutral(rmodel_ur)
         q1_ur = pin.randomConfiguration(rmodel_ur)
-        
+
         q0_pa = pin.neutral(rmodel_pa)
         q1_pa = pin.randomConfiguration(rmodel_pa)
-        
-        alpha_list = np.linspace(0,1,100)
-        
+
+        alpha_list = np.linspace(0, 1, 100)
+
         for alpha in alpha_list:
-            q_ur = pin.interpolate(rmodel_ur,q0_ur, q1_ur, alpha)
-            q_pa = pin.interpolate(rmodel_pa,q0_pa, q1_pa, alpha)
-            
+            q_ur = pin.interpolate(rmodel_ur, q0_ur, q1_ur, alpha)
+            q_pa = pin.interpolate(rmodel_pa, q0_pa, q1_pa, alpha)
+
             # Updating the models
             pin.forwardKinematics(rmodel_ur, rdata_ur, q_ur)
             pin.framesForwardKinematics(rmodel_ur, rdata_ur, q_ur)
@@ -801,8 +801,8 @@ class TestRobotsDistanceDerivatives(unittest.TestCase):
             pin.forwardKinematics(rmodel_pa, rdata_pa, q_pa)
             pin.framesForwardKinematics(rmodel_pa, rdata_pa, q_pa)
             pin.updateGeometryPlacements(rmodel_pa, rdata_pa, cmodel_pa, cdata_pa, q_pa)
-            
-                    ### Distance derivatives between sphere 1 (on universe) & sphere 2 (on tool0 / gripper)
+
+            ### Distance derivatives between sphere 1 (on universe) & sphere 2 (on tool0 / gripper)
 
             distance_deriv_ana_ur = self.ddist_analytic(
                 rmodel_ur,
@@ -971,10 +971,7 @@ class TestRobotsDistanceDerivatives(unittest.TestCase):
             self.assertAlmostEqual(
                 np.linalg.norm(distance_deriv_ana_pa),
                 np.linalg.norm(distance_deriv_numdiff_pa),
-        )
-            
-
-        
+            )
 
     def dist(self, rmodel, rdata, cmodel, cdata, shape1_id, shape2_id, res, req, q):
         """Computes the distance with hppfcl.
