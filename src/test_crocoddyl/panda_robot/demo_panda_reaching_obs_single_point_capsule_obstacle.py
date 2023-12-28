@@ -36,14 +36,12 @@ rdata = rmodel.createData()
 cdata = cmodel.createData()
 
 ### CREATING THE TARGET
-TARGET_POSE = pin.SE3(pin.utils.rotate("x", np.pi), np.array([0, 0, 1.55]))
-TARGET_POSE.translation = np.array([0, -0.4, 1.5])
+TARGET_POSE = pin.SE3(pin.utils.rotate("x", np.pi), np.array([-0.2, -0.0, 0.8]))
 
 ### CREATING THE OBSTACLE
 OBSTACLE_RADIUS = 1.5e-1
 OBSTACLE_HALFLENGTH = 2e-1
-OBSTACLE_POSE = pin.SE3.Identity()
-OBSTACLE_POSE.translation = np.array([0.25, -0.425, 1.5])
+OBSTACLE_POSE = pin.SE3(pin.utils.rotate("x", np.pi/2), np.array([0.1, -0.0, 0.8]))
 OBSTACLE = hppfcl.Capsule(OBSTACLE_RADIUS, OBSTACLE_HALFLENGTH)
 OBSTACLE_GEOM_OBJECT = pin.GeometryObject(
     "obstacle",
