@@ -218,7 +218,7 @@ class TestCollisions(unittest.TestCase):
             res,
         )
 
-        distance_ana = self.distance_sphere_capsule(shape1, shape2)
+        distance_ana = self.distance_sphere_capsule(shape1, shape1_placement,shape2, shape2_placement)
         self.assertAlmostEqual(distance_ana, distance_hpp)
 
         # Testing the computation of closest points
@@ -296,7 +296,7 @@ class TestCollisions(unittest.TestCase):
             res,
         )
 
-        distance_ana = self.distance_sphere_capsule(shape1, shape2)
+        distance_ana = self.distance_sphere_capsule(shape1, shape1_placement,shape2, shape2_placement)
         self.assertAlmostEqual(distance_ana, distance_hpp)
 
         # Testing the computation of closest points
@@ -308,7 +308,7 @@ class TestCollisions(unittest.TestCase):
         # - distance because interpenetration
         self.assertAlmostEqual(distance_cp, distance_ana)
 
-    def distance_sphere_capsule(self, sphere, capsule):
+    def distance_sphere_capsule(self, sphere, sphere_placement, capsule, capsule_placement):
         """Computes the signed distance between a sphere & a capsule.
 
         Args:
@@ -320,10 +320,10 @@ class TestCollisions(unittest.TestCase):
         """
         r1 = sphere.geometry.radius
         r2 = capsule.geometry.radius
-        A, B = self.get_A_B_from_center_capsule(capsule)
+        A, B = self.get_A_B_from_center_capsule(capsule,capsule_placement)
 
         # Position of the center of the sphere
-        C = sphere.placement.translation
+        C = sphere_placement.translation
 
         AB = B - A
         AC = C - A
@@ -350,7 +350,7 @@ class TestCollisions(unittest.TestCase):
 
         return distance
 
-    def get_A_B_from_center_capsule(self, capsule):
+    def get_A_B_from_center_capsule(self, capsule, capsule_placement):
         """Computes the points A & B of a capsule. The point A & B are the limits of the segment defining the capsule.
 
         Args:
@@ -362,8 +362,8 @@ class TestCollisions(unittest.TestCase):
         B = pin.SE3.Identity()
         B.translation = np.array([0, 0, +capsule.geometry.halfLength])
 
-        A = A * capsule.placement
-        B *= capsule.placement
+        A = A * capsule_placement
+        B *= capsule_placement
         return (A.translation, B.translation)
 
 
