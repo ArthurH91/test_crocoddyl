@@ -8,7 +8,7 @@ import pinocchio as pin
 import hppfcl
 
 
-class TestRobotsDistanceDerivatives(unittest.TestCase):
+class TestRobotsDistanceDerivativesCapsuleSpheres(unittest.TestCase):
     """This class is made to test the distances derivatives between primitives pairs such as sphere-sphere of panda robot & ur10. The collisions shapes are from hppfcl."""
 
     radius = 1.5e-1
