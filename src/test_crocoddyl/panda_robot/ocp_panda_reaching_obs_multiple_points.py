@@ -250,7 +250,7 @@ class OCPPandaReachingColWithMultipleCol:
         
         # Parameters of the solver
         ddp.termination_tolerance = 1e-3
-        ddp.max_qp_iters = 1000
+        ddp.max_qp_iters = 500
         ddp.eps_abs = 1e-6
         ddp.eps_rel = 0
         
