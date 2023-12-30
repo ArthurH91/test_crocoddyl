@@ -145,7 +145,7 @@ class OCPPandaReaching:
 
         # ddp.setCallbacks([crocoddyl.CallbackLogger(), crocoddyl.CallbackVerbose()])
 
-# Define solver
+        # Define solver
         ddp = mim_solvers.SolverSQP(problem)
         ddp.use_filter_line_search = False
         ddp.termination_tolerance = 1e-3

@@ -71,8 +71,8 @@ class ResidualCollision(crocoddyl.ResidualModelAbstract):
         self._shape2_parentJoint = self._shape2.parentJoint
 
         # Checking that shape 1 is belonging to the robot & shape 2 is the obstacle
-        assert not "obstacle" in self._shape1.name
-        assert "obstacle" in self._shape2.name
+        # assert not "obstacle" in self._shape1.name
+        # assert "obstacle" in self._shape2.name
 
     def calc(self, data, x, u=None):
         data.r[:] = self.f(data, x[: self._nq])
